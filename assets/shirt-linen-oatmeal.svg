@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 700">
+<defs>
+  <linearGradient id="ground" x2="1" y2="1"><stop stop-color="#f1ede3"/><stop offset="1" stop-color="#e8ddcd"/></linearGradient>
+  <linearGradient id="cloth" x1="0" y1=".1" x2=".9" y2="1"><stop stop-color="#e1cdb2"/><stop offset=".57" stop-color="#a88c6c"/><stop offset="1" stop-color="#e1cdb2"/></linearGradient>
+  <pattern id="weave" patternUnits="userSpaceOnUse" width="6" height="6"><path d="M0 1H6m-5-1v6m3-6v6" stroke="#7c6046" stroke-opacity=".23" stroke-width=".4"/><path d="M0 4H6" stroke="white" stroke-opacity=".25" stroke-width=".6"/></pattern>
+  <filter id="shadow" x="-.35" y="-.35" width="1.7" height="1.7"><feDropShadow dx="12" dy="22" stdDeviation="17" flood-color="#3c372e" flood-opacity=".22"/><feDropShadow dx="1" dy="3" stdDeviation="2" flood-color="#302c24" flood-opacity=".24"/></filter>
+</defs>
+<rect width="640" height="700" fill="url(#ground)"/>
+<ellipse cx="335" cy="582" rx="204" ry="58" fill="#766850" opacity=".06"/>
+<g transform="translate(18 -7) rotate(-3 320 350)" style="--mid:#a88c6c;--seam:#7c6046">
+  <path d="M241 131 L272 104 Q321 128 361 104 L392 130 467 155 Q482 203 495 296 L526 502 L465 518 423 315 436 565 Q373 595 321 580 Q269 595 202 566 L218 315 175 517 114 500 145 296 Q157 197 174 155 Z" fill="url(#cloth)" stroke="#7c6046" stroke-width="1" stroke-opacity=".48" filter="url(#shadow)"/>
+  <path d="M241 131 L272 104 Q321 128 361 104 L392 130 467 155 Q482 203 495 296 L526 502 L465 518 423 315 436 565 Q373 595 321 580 Q269 595 202 566 L218 315 175 517 114 500 145 296 Q157 197 174 155 Z" fill="url(#weave)" opacity=".72"/>
+  <g fill="none" stroke="#7c6046" opacity=".54" stroke-width="1.8"><path fill="var(--mid)" d="M271 105l49 22-25 66-43-62Zm90 0-41 22 25 66 45-62Z"/><path d="M319 154v425m12-425v424M245 139q-29 86-28 177m179-177q28 81 27 176M119 472l62 16m339-15-61 16M355 235h49v61q-22 13-49 0zM203 553q60 26 115 13m17 0q54 13 100-14"/><path d="M326 210v340" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 41"/></g>
+  <path d="M268 250q-35 100-19 210m139-194q29 148 8 236" fill="none" stroke="#e1cdb2" stroke-width="14" opacity=".12"/>
+</g>
+</svg>

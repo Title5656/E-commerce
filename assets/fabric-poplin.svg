@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 280">
+<defs>
+<linearGradient id="fold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".25"/><stop offset=".46" stop-color="#fff" stop-opacity="0"/><stop offset=".68" stop-color="#211b15" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity=".1"/></linearGradient>
+<pattern id="thread" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(-15)"><path d="M0 3h14m-14 5h14M2 0v14m4-14v14m5-14v14" fill="none" stroke="#242c25" stroke-width="1.1" opacity=".45"/></pattern>
+</defs>
+<rect width="520" height="280" fill="#5d635a"/>
+<rect width="520" height="280" fill="url(#thread)"/>
+<path d="M-80 216Q98-17 252 28T579 106v174H0z" fill="url(#fold)"/>
+<path d="M-49 254Q155 30 292 100T560 113" fill="none" stroke="#fff" stroke-opacity=".095" stroke-width="16"/>
+</svg>

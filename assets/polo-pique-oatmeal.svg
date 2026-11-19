@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 700">
+<defs>
+  <linearGradient id="ground" x2="1" y2="1"><stop stop-color="#f1ede3"/><stop offset="1" stop-color="#e8ddcd"/></linearGradient>
+  <linearGradient id="cloth" x1="0" y1=".1" x2=".9" y2="1"><stop stop-color="#e1cdb2"/><stop offset=".57" stop-color="#a88c6c"/><stop offset="1" stop-color="#e1cdb2"/></linearGradient>
+  <pattern id="weave" patternUnits="userSpaceOnUse" width="6" height="6"><path d="M0 1H6m-5-1v6m3-6v6" stroke="#7c6046" stroke-opacity=".23" stroke-width=".4"/><path d="M0 4H6" stroke="white" stroke-opacity=".25" stroke-width=".6"/></pattern>
+  <filter id="shadow" x="-.35" y="-.35" width="1.7" height="1.7"><feDropShadow dx="12" dy="22" stdDeviation="17" flood-color="#3c372e" flood-opacity=".22"/><feDropShadow dx="1" dy="3" stdDeviation="2" flood-color="#302c24" flood-opacity=".24"/></filter>
+</defs>
+<rect width="640" height="700" fill="url(#ground)"/>
+<ellipse cx="335" cy="582" rx="204" ry="58" fill="#766850" opacity=".06"/>
+<g transform="translate(18 -7) rotate(-3 320 350)" style="--mid:#a88c6c;--seam:#7c6046">
+  <path d="M244 130 L271 110 Q318 133 362 110 L397 130 487 160 Q506 197 529 262 L464 293 432 262 L439 565 Q322 591 201 563 L210 263 178 293 112 261 Q137 196 155 160 Z" fill="url(#cloth)" stroke="#7c6046" stroke-width="1" stroke-opacity=".48" filter="url(#shadow)"/>
+  <path d="M244 130 L271 110 Q318 133 362 110 L397 130 487 160 Q506 197 529 262 L464 293 432 262 L439 565 Q322 591 201 563 L210 263 178 293 112 261 Q137 196 155 160 Z" fill="url(#weave)" opacity=".72"/>
+  <g fill="none" stroke="#7c6046" opacity=".54" stroke-width="1.8"><path fill="var(--mid)" d="M269 110l53 20-30 58-34-61Zm94 0-41 20 25 58 35-58Z"/><path d="M316 145v96h16v-80M244 137q-24 58-34 126m193-126q24 58 29 125M120 253l64 32m337-32-63 32M205 550q107 24 230 0"/><circle cx="325" cy="193" r="3" fill="var(--seam)"/><circle cx="325" cy="223" r="3" fill="var(--seam)"/></g>
+  <path d="M268 250q-35 100-19 210m139-194q29 148 8 236" fill="none" stroke="#e1cdb2" stroke-width="14" opacity=".12"/>
+</g>
+</svg>

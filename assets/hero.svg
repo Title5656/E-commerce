@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 720">
+<defs>
+  <linearGradient id="canvas" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dfdac8"/><stop offset="1" stop-color="#b5aa91"/></linearGradient>
+  <linearGradient id="green" x1="0" y1="0" x2=".85" y2="1"><stop stop-color="#9ca087"/><stop offset=".55" stop-color="#66715a"/><stop offset="1" stop-color="#81886c"/></linearGradient>
+  <linearGradient id="cream" x1="0" y1=".1" x2=".8" y2="1"><stop stop-color="#f0e8d8"/><stop offset=".58" stop-color="#c9b698"/><stop offset="1" stop-color="#e0cfb3"/></linearGradient>
+  <pattern id="grain" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 1h6M1 0v6m3-6v6" stroke="#494b3e" stroke-opacity=".19" stroke-width=".44"/><path d="M0 4h6" stroke="#fff" stroke-opacity=".4" stroke-width=".5"/></pattern>
+  <filter id="drop" x="-.3" y="-.3" width="1.7" height="1.7"><feDropShadow dx="17" dy="22" stdDeviation="17" flood-color="#3a3528" flood-opacity=".3"/></filter>
+  <filter id="glow" x="-.6" y="-.6" width="2.2" height="2.2"><feGaussianBlur stdDeviation="43"/></filter>
+</defs>
+<rect width="840" height="720" fill="url(#canvas)"/>
+<rect width="840" height="720" fill="url(#grain)" opacity=".65"/>
+<g filter="url(#glow)" opacity=".39"><path d="M-199 340 518-63l61 106-713 388z" fill="#fbf5db"/><path d="M55 806 824 349l156 108-785 397z" fill="#867454"/></g>
+<g transform="translate(30 20) rotate(-21 300 380) scale(1.12)">
+  <path d="M241 131 L272 104 Q321 128 361 104 L392 130 467 155 Q482 203 495 296 L526 502 L465 518 423 315 436 565 Q373 595 321 580 Q269 595 202 566 L218 315 175 517 114 500 145 296 Q157 197 174 155 Z" fill="url(#cream)" stroke="#b49774" stroke-width="1.3" filter="url(#drop)"/>
+  <path d="M241 131 L272 104 Q321 128 361 104 L392 130 467 155 Q482 203 495 296 L526 502 L465 518 423 315 436 565 Q373 595 321 580 Q269 595 202 566 L218 315 175 517 114 500 145 296 Q157 197 174 155 Z" fill="url(#grain)" opacity=".77"/>
+  <g fill="none" stroke="#8b7658" opacity=".55" stroke-width="1.8">
+    <path d="M271 105l49 22-25 66-43-62Zm90 0-41 22 25 66 45-62ZM319 154v425m12-425v424M245 139q-29 86-28 177m179-177q28 81 27 176M119 472l62 16m339-15-61 16M355 235h49v61q-22 13-49 0zM203 553q60 26 115 13m17 0q54 13 100-14"/>
+    <path d="M326 210v340" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 41"/>
+  </g>
+</g>
+<g transform="translate(255 22) rotate(16 320 350) scale(1.05)">
+  <path d="M235 129 Q266 119 280 107 C287 143 353 143 361 107 Q383 122 408 130 L482 158 Q503 192 533 263 L465 301 L434 260 L438 570 Q379 588 318 580 Q249 584 200 569 L206 261 L177 301 L108 263 Q140 187 157 158 Z" fill="url(#green)" stroke="#4e5846" stroke-width="1.2" filter="url(#drop)"/>
+  <path d="M235 129 Q266 119 280 107 C287 143 353 143 361 107 Q383 122 408 130 L482 158 Q503 192 533 263 L465 301 L434 260 L438 570 Q379 588 318 580 Q249 584 200 569 L206 261 L177 301 L108 263 Q140 187 157 158 Z" fill="url(#grain)" opacity=".87"/>
+  <g fill="none" stroke="#4b5643" stroke-width="2.1" opacity=".7"><path d="M280 108q10 63 41 65 32 0 40-65m-123 26q-26 69-32 127m200-126q24 67 28 125M119 257l63 35m339-36-62 36M203 555q109 20 232 0" /><path d="M291 117q14 35 30 36 19 0 30-36" /></g>
+  <path d="M217 289q-8 102 6 178m198-176q10 99 1 218" fill="none" stroke="#c6c8a9" stroke-width="13" opacity=".16"/>
+  <rect x="310" y="142" width="22" height="9" rx="2" fill="#d2ccad"/>
+</g>
+<g transform="translate(549 509) rotate(-9)" filter="url(#drop)">
+  <rect x="14" y="10" width="202" height="114" rx="6" fill="#afa68b"/>
+  <rect width="202" height="114" rx="6" fill="#f0e8d6"/>
+  <rect x="17" y="61" width="41" height="31" rx="1" fill="#cabb9f"/>
+  <rect x="63" y="61" width="41" height="31" rx="1" fill="#7f896e"/>
+  <rect x="109" y="61" width="41" height="31" rx="1" fill="#56584f"/>
+  <path d="M17 61h133v31H17z" fill="url(#grain)"/>
+  <text x="17" y="30" font-family="system-ui,sans-serif" font-weight="750" font-size="20" fill="#303b2d" letter-spacing="3">WARIN.</text>
+  <text x="17" y="47" font-family="system-ui,sans-serif" font-size="8" fill="#57564b" letter-spacing="2">FABRIC PASSPORT</text>
+</g>
+</svg>

@@ -1,117 +1,94 @@
 (() => {
-  const { views, catalog, rules } = globalThis.Warin;
+  const { views, catalog, rules } = globalThis.Mono;
   const { icon, pageTitle } = views;
-  const studioProducts = catalog.products.filter(product => product.studio);
+  const garments = catalog.products.filter(product => product.studio);
+  const fitNames = { tight: "แน่น", regular: "พอดี", oversized: "โคร่ง" };
 
-  const fitLabels = {
-    tight: { name: "แน่น", detail: "ลองเทียบไซส์ใหญ่ขึ้นเพื่อเพิ่มพื้นที่ช่วงอก" },
-    regular: { name: "พอดี", detail: "มีระยะเผื่อรอบอกอยู่ในช่วงสำหรับทรงพอดีของเดโม" },
-    oversized: { name: "โคร่ง", detail: "มีพื้นที่รอบตัวมากขึ้นสำหรับลุคหลวม" }
-  };
-
-  function mannequin(profile, product, fit) {
-    const mid = 220;
-    const shoulders = profile.shoulder * 1.58;
-    const chest = profile.chest * 0.58;
-    const waist = profile.waist * 0.59;
-    const headY = 83 - (profile.height - 150) * 0.43;
-    const shoulderY = headY + 51;
-    const chestY = shoulderY + 47;
-    const waistY = chestY + 66 + (profile.height - 150) * 0.32;
-    const jointY = waistY + 27;
-    const shoeY = jointY + 104 + (profile.leg - 70) * 1.4;
-    const roomy = { tight: 2, regular: 11, oversized: 25 }[fit];
-    const sleeve = product.category === "shirt" ? 101 : 40;
-    const hemY = waistY + 6 + roomy * 0.60;
-    const left = mid - (chest + roomy);
-    const right = mid + chest + roomy;
-    const tone = fit === "tight" ? "#9f694e" : fit === "regular" ? "#65745a" : "#697e87";
-    return `<svg class="mannequin" viewBox="0 0 440 480" role="img" aria-labelledby="model-title">
-      <title id="model-title">ภาพหุ่นสาธิต ทรง${fitLabels[fit].name}</title>
-      <defs><pattern id="studio-grid" width="24" height="24" patternUnits="userSpaceOnUse">
-        <path d="M24 0H0v24" fill="none" stroke="#d5dcd0" stroke-width="1"/>
-      </pattern><linearGradient id="studio-shirt" x1="0" x2="1" y1="0" y2="1"><stop stop-color="${tone}"/><stop offset="1" stop-color="${tone}" stop-opacity=".77"/></linearGradient></defs>
-      <rect x="18" y="12" width="404" height="456" rx="22" fill="url(#studio-grid)" opacity=".83"/>
-      <path d="M220 27v420M62 ${chestY}h316M62 ${waistY}h316" fill="none" stroke="#adb9ab" stroke-dasharray="4 6"/>
-      <ellipse cx="220" cy="${shoeY + 5}" rx="93" ry="10" fill="#42563f" opacity=".12"/>
-      <g fill="#d7d0bb" stroke="#a9a38f" stroke-width="1.4">
-        <ellipse cx="220" cy="${headY}" rx="26" ry="35"/>
-        <path d="M205 ${headY + 25}v23l-18 12h66l-18-12v-23Z"/>
-        <path d="M${mid - shoulders} ${shoulderY} Q${mid - chest} ${chestY} ${mid - waist} ${waistY} L${mid - waist - 4} ${jointY}
-          H${mid + waist + 4} L${mid + waist} ${waistY} Q${mid + chest} ${chestY} ${mid + shoulders} ${shoulderY}Z"/>
-        <path d="M${mid - shoulders} ${shoulderY + 10} l-26 131 14 4 31-122Zm${shoulders * 2} 0 26 131-14 4-31-122Z"/>
-        <path d="M${mid - waist - 4} ${jointY - 2} L${mid - 45} ${shoeY} h18l27-${shoeY - jointY - 16} 27 ${shoeY - jointY - 16}h18L${mid + waist + 4} ${jointY - 2}Z"/>
-      </g>
-      <path d="M200 ${shoulderY - 4} Q220 ${shoulderY + 13} 240 ${shoulderY - 4} L${mid + shoulders + roomy} ${shoulderY + 4}
-        L${mid + shoulders + roomy + 18} ${shoulderY + sleeve} l-24 9 L${right} ${chestY}
-        L${mid + waist + roomy} ${hemY} Q220 ${hemY + 12} ${mid - waist - roomy} ${hemY}
-        L${left} ${chestY} L${mid - shoulders - roomy + 6} ${shoulderY + sleeve + 9}
-        l-24-9 L${mid - shoulders - roomy} ${shoulderY + 4}Z"
-        fill="url(#studio-shirt)" stroke="white" stroke-width="1.9" stroke-opacity=".55"/>
-      ${product.category === "shirt"
-        ? `<path d="M200 ${shoulderY - 4}l20 13-15 23-15-22m50-14-20 13 15 23 15-22m-30-1v${hemY - shoulderY - 6}" stroke="#fff" stroke-opacity=".46" fill="none" stroke-width="1.8"/>`
-        : `<path d="M201 ${shoulderY - 3}q18 26 38 1" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>`}
-      <path d="M${left} ${chestY}h${right - left}" stroke="#fff" stroke-dasharray="3 5" stroke-opacity=".86"/>
-      <circle cx="${left}" cy="${chestY}" r="4" fill="#fcfaf0"/><circle cx="${right}" cy="${chestY}" r="4" fill="#fcfaf0"/>
-    </svg>`;
-  }
-
-  function studioResult(profile, product, size) {
+  function studioResult(profile, product, size, color) {
     const row = product.chart.find(entry => entry.size === size);
     const { ease, fit } = rules.classifyFit(profile.chest, row.circumference);
-    const recommendation = rules.recommendSize(profile, product.chart);
+    const recommended = rules.recommendSize(profile, product.chart);
+    const room = ease < 0 ? `เสื้อเล็กกว่ารอบอก ${-ease} ซม.`
+      : ease === 0 ? "รอบอกเสื้อเท่ากับรอบอกหุ่น" : `เผื่อรอบอก ${ease} ซม.`;
+    const advice = !recommended ? "ยังไม่มีไซซ์ที่พอดีกับรอบอกนี้ ลองเทียบตารางไซซ์บนหน้าสินค้า"
+      : recommended.size === size ? `แนะนำไซซ์ ${size} สำหรับรอบอกนี้`
+        : `ถ้าชอบทรงพอดี แนะนำไซซ์ ${recommended.size} · เผื่อรอบอก ${recommended.ease} ซม.`;
+    const selectedColor = product.colors.includes(color) ? color : product.colors[0];
+    const query = new URLSearchParams({ size, color: selectedColor });
     return {
-      image: mannequin(profile, product, fit),
-      result: `<div class="fit-result ${fit}">
-        <div><span class="status-pill">${fitLabels[fit].name}</span><h2>ไซส์ ${size} · ระยะเผื่อ ${ease} ซม.</h2><p>${fitLabels[fit].detail}</p></div>
-        <small>รอบอกเสื้อ ${row.circumference} ซม. · รอบอกตัวอย่าง ${profile.chest} ซม.</small>
-      </div>`,
-      recommendation: recommendation ? `แนะนำไซส์ ${recommendation.size} · ระยะเผื่อ ${recommendation.ease} ซม.` : "ลองเทียบกับตารางไซส์ ยังไม่มีไซส์พอดีในช่วงตัวอย่าง",
-      link: "#/product/" + product.id + "?size=" + (recommendation?.size ?? size)
+      result: `<h3>ไซซ์ ${size} · ${fitNames[fit]}</h3><p>${room} <span>(เสื้อ ${row.circumference} / หุ่น ${profile.chest} ซม.)</span></p>`,
+      recommendation: advice,
+      link: "#/product/" + product.id + "?" + query
     };
+  }
+
+  function studioColors(product, selected) {
+    return product.colors.map(key => {
+      const { name, hex } = catalog.colors[key];
+      return `<label class="fitting-swatch"><input type="radio" name="color" value="${key}" ${key === selected ? "checked" : ""}>
+        <span><i style="--color:${hex}"></i>${name}</span></label>`;
+    }).join("");
   }
 
   function studio(state, query) {
     const profile = state.profile ?? catalog.sampleProfile;
-    const product = studioProducts.find(item => item.id === query.get("product")) ?? studioProducts[0];
-    const fit = rules.recommendSize(profile, product.chart);
-    const size = catalog.sizes.includes(query.get("size")) ? query.get("size") : fit?.size ?? "M";
-    const initial = studioResult(profile, product, size);
-
-    return `<div class="wrap page">
-      ${pageTitle("ลองเทียบทรงของคุณ", "ปรับสัดส่วนตัวอย่าง เลือกเสื้อและไซส์ แล้วดูระยะเผื่อก่อนตัดสินใจ", "Fit-Twin Studio")}
-      <div class="studio-layout">
-        <section class="studio-stage" aria-label="ภาพและผลเปรียบเทียบทรง">
-          <div class="stage-top"><span class="tile-icon">${icon("fit")}</span><span>ภาพหุ่น 2 มิติ</span></div>
-          <div id="studio-art">${initial.image}</div>
-          <div id="fit-result" aria-live="polite">${initial.result}</div>
-        </section>
-        <form class="panel studio-panel" data-form="profile">
-          <h2>เสื้อที่ต้องการเทียบ</h2>
-          <label>รุ่น<select name="product">${studioProducts.map(item =>
-            `<option value="${item.id}" ${item.id === product.id ? "selected" : ""}>${item.name}</option>`
-          ).join("")}</select></label>
-          <fieldset><legend>ไซส์ที่กำลังลอง</legend><div class="choices">${catalog.sizes.map(item =>
-            `<label class="chip"><input type="radio" name="size" value="${item}" ${item === size ? "checked" : ""}><span>${item}</span></label>`
-          ).join("")}</div></fieldset>
-          <div class="measurement-header"><h2>สัดส่วน (ซม.)</h2>
-            <button class="text-button" type="button" data-action="sample-profile">ใช้ค่าตัวอย่าง</button></div>
-          ${Object.entries(catalog.measurements).map(([key, range]) => `<label class="measurement" for="metric-${key}">
-            <span>${range.label}</span><output id="read-${key}" for="metric-${key}">${profile[key]} ซม.</output>
-            <input id="metric-${key}" type="range" name="${key}" min="${range.min}" max="${range.max}" value="${profile[key]}">
-          </label>`).join("")}
-          <div id="studio-recommendation" class="callout">${initial.recommendation}</div>
-          <button class="button full" type="submit">บันทึกสัดส่วน</button>
-          <p id="profile-note" class="form-note">${state.profile ? "มีโปรไฟล์บันทึกบนเบราว์เซอร์นี้" : "สัดส่วนจะเก็บบนเบราว์เซอร์นี้เมื่อกดบันทึก"}</p>
-          <div class="button-row compact">
-            <a id="studio-product" class="text-link" href="${initial.link}">ไปดูสินค้ารุ่นนี้</a>
-            <button class="text-button" type="button" id="delete-profile" data-action="clear-profile" ${state.profile ? "" : "hidden"}>ลบโปรไฟล์</button>
+    const product = garments.find(item => item.id === query.get("product")) ?? garments[0];
+    const size = product.chart.some(row => row.size === query.get("size")) ? query.get("size")
+      : rules.recommendSize(profile, product.chart)?.size ?? "M";
+    const color = product.colors.includes(query.get("color")) ? query.get("color") : product.colors[0];
+    const initial = studioResult(profile, product, size, color);
+    return `<div class="wrap page fitting-page">
+      ${pageTitle("ห้องลองเสื้อ", "เลือกเสื้อ ปรับหุ่นตามสัดส่วนของคุณ แล้วเทียบทรงก่อนเลือกไซซ์", "Fit-Twin Studio")}
+      <div class="fitting-layout">
+        <figure id="studio-art" class="fitting-stage" aria-label="หุ่นลองเสื้อ">
+          <div class="fitting-stage-label"><div><span id="studio-garment">${product.english}</span>
+            <small id="studio-variant">${catalog.colors[color].name} / ${size}</small></div>
+            <span class="fitting-rotate-hint">${icon("rotate")} ลากเพื่อหมุน</span></div>
+          <div class="fitting-scene">
+            <canvas class="fitting-canvas" id="studio-canvas" tabindex="0" role="img" aria-label="หุ่นลองเสื้อสามมิติ หมุนด้วยปุ่มลูกศรซ้ายและขวา"></canvas>
+            <img class="fitting-fallback" src="${catalog.productImage(product.id, color)}" alt="${product.name} สี${catalog.colors[color].name}" hidden>
           </div>
-          <p class="form-note">หุ่นเป็นภาพประกอบสัดส่วน คำแนะนำสำหรับสองรุ่นนี้คำนวณจากรอบอก โปรดเทียบตารางไซส์ก่อนเลือก</p>
+          <div class="fitting-toolbar" role="group" aria-label="เลือกมุมมองหุ่น">
+            <button type="button" data-angle="0" aria-pressed="true">ด้านหน้า</button>
+            <button type="button" data-angle="90" aria-pressed="false">ด้านข้าง</button>
+            <button type="button" data-angle="180" aria-pressed="false">ด้านหลัง</button>
+            <button type="button" data-framing aria-controls="studio-canvas">ดูช่วงตัว</button>
+          </div>
+          <figcaption class="fitting-unavailable" hidden>อุปกรณ์นี้แสดงภาพสินค้าแทนหุ่นสามมิติ</figcaption>
+        </figure>
+        <form class="fitting-settings" data-form="profile">
+          <section class="fitting-options" aria-labelledby="studio-options-title">
+            <h2 id="studio-options-title">เสื้อที่กำลังลอง</h2>
+            <label class="fitting-select"><span class="sr-only">รุ่นเสื้อ</span><select name="product">${garments.map(item =>
+              `<option value="${item.id}" ${item.id === product.id ? "selected" : ""}>${item.name}</option>`
+            ).join("")}</select></label>
+            <fieldset><legend>สี</legend><div class="fitting-choices" id="studio-colors">${studioColors(product, color)}</div></fieldset>
+            <fieldset><legend>ไซซ์</legend><div class="fitting-choices">${product.chart.map(({ size: item }) =>
+              `<label class="fitting-size"><input type="radio" name="size" value="${item}" ${item === size ? "checked" : ""}><span>${item}</span></label>`
+            ).join("")}</div></fieldset>
+            <div class="fitting-verdict" role="status">
+              <div id="fit-result">${initial.result}</div>
+              <p id="studio-recommendation">${initial.recommendation}</p>
+            </div>
+            <a class="fitting-product-link" id="studio-product" href="${initial.link}">ดูเสื้อตัวนี้ ${icon("arrow-right")}</a>
+          </section>
+          <section class="fitting-measures" aria-labelledby="studio-measures-title">
+            <div class="fitting-section-head"><h2 id="studio-measures-title">สัดส่วนหุ่น</h2>
+              <button class="fitting-text-button" type="button" data-action="sample-profile">ใช้ค่าตัวอย่าง</button></div>
+            <p class="fitting-note">ปรับสัดส่วนเพื่อดูทรงเสื้อบนหุ่น ระบบใช้รอบอกในการแนะนำไซซ์</p>
+            ${Object.entries(catalog.measurements).map(([key, range]) => `<label class="fitting-measure" for="metric-${key}">
+              <span>${range.label}</span><output id="read-${key}" for="metric-${key}">${profile[key]} ซม.</output>
+              <input id="metric-${key}" type="range" name="${key}" min="${range.min}" max="${range.max}" value="${profile[key]}"
+                style="--progress:${(profile[key] - range.min) / (range.max - range.min) * 100}%">
+            </label>`).join("")}
+            <div class="fitting-save"><button class="button" type="submit">บันทึกสัดส่วน</button>
+              <button class="fitting-text-button" type="button" id="delete-profile" data-action="clear-profile" ${state.profile ? "" : "hidden"}>ลบสัดส่วนที่บันทึก</button></div>
+            <p id="profile-note" class="fitting-note">${state.profile ? "มีสัดส่วนบันทึกในเบราว์เซอร์นี้" : "เมื่อกดบันทึก สัดส่วนจะอยู่ในเบราว์เซอร์นี้"}</p>
+          </section>
         </form>
       </div>
     </div>`;
   }
 
-  Object.assign(views, { studio, studioResult });
+  Object.assign(views, { studio, studioResult, studioColors });
 })();

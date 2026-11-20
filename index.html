@@ -3,50 +3,59 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="WARIN ต้นแบบร้านเสื้อผ้าพื้นฐาน ลองเปรียบเทียบผ้า เทียบไซส์ และจัดกล่องลองที่บ้าน">
-  <title>WARIN · เสื้อผ้าที่ใส่ได้ทุกวัน</title>
+  <meta name="theme-color" content="#faf9f6">
+  <meta name="description" content="MONO เสื้อผ้าสำหรับชีวิตที่เรียบง่าย เลือกเสื้อผ้าโทนธรรมชาติ รู้จักเนื้อผ้า และลองเทียบไซซ์ในห้องลองสามมิติ">
+  <title>MONO · Clothing for simple living</title>
   <link rel="icon" href="./assets/mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./studio.css">
   <script defer src="./js/catalog.js"></script>
   <script defer src="./js/rules.js"></script>
   <script defer src="./js/store.js"></script>
   <script defer src="./js/views/shared.js"></script>
   <script defer src="./js/views/shop.js"></script>
   <script defer src="./js/views/checkout.js"></script>
+  <script defer src="./js/fit-model.js"></script>
   <script defer src="./js/views/studio.js"></script>
   <script defer src="./js/views/trial.js"></script>
   <script defer src="./js/app.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">ข้ามไปเนื้อหาหลัก</a>
-  <div class="demo-strip">โครงงาน ITDS294 <span aria-hidden="true">·</span> ทุกธุรกรรมเป็นการจำลอง</div>
   <header class="site-header">
     <div class="wrap masthead">
-      <a class="wordmark" href="#/" aria-label="WARIN หน้าหลัก">WARIN<span>.</span></a>
-      <nav class="main-nav" aria-label="เมนูร้าน">
-        <a data-section="shop" href="#/shop">เลือกซื้อ</a>
-        <a data-section="passport" href="#/passport">Fabric Passport</a>
-        <a data-section="studio" href="#/studio">Fit-Twin</a>
-        <a data-section="trial" href="#/trial-box">กล่องลอง</a>
+      <a class="wordmark" href="#/" aria-label="MONO หน้าหลัก">MONO</a>
+      <nav class="main-nav" id="shop-nav" aria-label="เมนูร้าน">
+        <a data-section="home" href="#/">หน้าหลัก</a>
+        <a data-section="shop" href="#/shop">เสื้อผ้า</a>
+        <a data-section="studio" href="#/studio">ห้องลอง 3D</a>
+        <a data-section="passport" href="#/passport">สมุดผ้า</a>
+        <a data-section="trial" href="#/trial-box">ลองที่บ้าน</a>
       </nav>
-      <a class="bag-link" data-section="cart" href="#/cart">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.55" aria-hidden="true"><path d="M5 8h14l1 13H4L5 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg>
-        <span>ตะกร้า</span><span id="cart-count" class="badge-count">0</span>
-      </a>
+      <div class="header-tools">
+        <a class="icon-button" href="#/shop?search=1" aria-label="ค้นหาสินค้า" title="ค้นหาสินค้า"><span data-icon="search"></span></a>
+        <a class="icon-button bag-link" data-section="cart" href="#/cart" aria-label="ตะกร้าสินค้า" title="ตะกร้าสินค้า">
+          <span data-icon="shopping-bag"></span><span id="cart-count" class="bag-count" hidden>0</span>
+        </a>
+        <button class="icon-button menu-toggle" type="button" aria-expanded="false" aria-controls="shop-nav" aria-label="เปิดเมนู">
+          <span data-icon="menu"></span><span data-icon="x" hidden></span>
+        </button>
+      </div>
     </div>
   </header>
   <div id="storage-warning" class="wrap" aria-live="polite"></div>
-  <main id="main" tabindex="-1">
-    <p class="wrap page">กำลังเปิดร้าน WARIN</p>
-  </main>
-  <noscript><p class="wrap callout">กรุณาเปิด JavaScript ในเบราว์เซอร์เพื่อใช้ต้นแบบ</p></noscript>
+  <main id="main" tabindex="-1"><p class="wrap page">กำลังเปิดร้าน MONO</p></main>
+  <noscript><p class="wrap callout">กรุณาเปิด JavaScript เพื่อเลือกสินค้า</p></noscript>
   <footer class="site-footer">
     <div class="wrap footer-inner">
-      <div><a class="wordmark" href="#/">WARIN<span>.</span></a><p>เสื้อผ้าที่ใส่ได้ทุกวัน<br>ต้นแบบเพื่อการศึกษา ITDS294</p></div>
-      <nav aria-label="ข้อมูลและรายการ">
-        <a href="#/orders">คำสั่งซื้อของฉัน</a>
-        <a href="#/trials">ติดตามกล่องลอง</a>
-        <a href="#/privacy">ข้อมูลและการรีเซ็ต</a>
+      <div class="footer-brand"><a class="wordmark" href="#/">MONO</a><p lang="en">Clothing for simple living.</p></div>
+      <nav aria-label="บริการของร้าน">
+        <h2>บริการของ MONO</h2>
+        <a href="#/studio">ห้องลอง 3D</a><a href="#/passport">สมุดตัวอย่างผ้า</a><a href="#/trial-box">จัดกล่องลองที่บ้าน</a>
+      </nav>
+      <nav aria-label="รายการของคุณ">
+        <h2>รายการของคุณ</h2>
+        <a href="#/orders">คำสั่งซื้อของฉัน</a><a href="#/trials">ติดตามกล่องลอง</a><a href="#/privacy">ข้อมูลบนอุปกรณ์</a>
       </nav>
     </div>
   </footer>

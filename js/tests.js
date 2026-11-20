@@ -1,5 +1,5 @@
 (() => {
-  const Warin = globalThis.Warin ??= {};
+  const Mono = globalThis.Mono ??= {};
   const tests = [];
   const test = (id, name, expected, fn) => tests.push({ id, name, expected, fn });
 
@@ -27,7 +27,7 @@
 
   function createDemoStore(overrides = {}) {
     let id = 0;
-    return Warin.createStore({
+    return Mono.createStore({
       storage: memoryStorage(),
       getNow: () => 1800000000000,
       makeId: () => "test-" + ++id,
@@ -38,7 +38,7 @@
   function checkout(store, mode, requestId, extra = {}) {
     return store.dispatch({
       type: "checkout", mode, requestId,
-      signature: Warin.rules.checkoutSignature(store.read(), mode),
+      signature: Mono.rules.checkoutSignature(store.read(), mode),
       ...extra
     });
   }
@@ -60,18 +60,18 @@
   }
 
   test("CAT01", "แค็ตตาล็อกมีข้อมูลผ้าครบและ variant ตรงกับราคา", [6, 6, 49900], () => {
-    const { products, fabrics, resolveVariant } = Warin.catalog;
+    const { products, fabrics, resolveVariant } = Mono.catalog;
     return [products.length, fabrics.length, resolveVariant(edgeVariant).unitSatang];
   });
   test("CAT02", "สีที่ไม่มีขายใช้สร้างรายการไม่ได้", null,
-    () => Warin.catalog.resolveVariant("tee-heavy~olive~M"));
+    () => Mono.catalog.resolveVariant("tee-heavy~olive~M"));
 
   for (const [id, subtotal, expected] of [
     ["C01", 49800, [49800, 0]],
     ["C02", 49900, [40000, 9900]]
   ]) {
     test(id, "ยอดซื้อก่อนใช้เครดิต " + subtotal / 100 + " บาท", expected, () => {
-      const quote = Warin.rules.quotePurchase(
+      const quote = Mono.rules.quotePurchase(
         [{ unitSatang: subtotal, quantity: 1 }], [availableCredit], availableCredit.id
       );
       return [quote.dueSatang, quote.creditSatang];
@@ -79,7 +79,7 @@
   }
 
   test("C03", "เครดิตที่ใช้แล้วไม่ลดราคาอีก", 49900,
-    () => Warin.rules.quotePurchase(
+    () => Mono.rules.quotePurchase(
       [{ unitSatang: 49900, quantity: 1 }],
       [{ ...availableCredit, usedBy: "ORD-002" }], availableCredit.id
     ).dueSatang);
@@ -97,20 +97,20 @@
     ["F01", 5, "tight"], ["F02", 6, "regular"], ["F03", 14, "regular"], ["F04", 15, "oversized"]
   ]) {
     test(id, "ระยะเผื่อ " + difference + " ซม.", expected,
-      () => Warin.rules.classifyFit(96, 96 + difference).fit);
+      () => Mono.rules.classifyFit(96, 96 + difference).fit);
   }
   test("F05", "อก 96 กับเสื้อคอตตอนหนาแนะนำ M", ["M", 10], () => {
-    const product = Warin.catalog.findProduct("tee-heavy");
-    const recommendation = Warin.rules.recommendSize({ chest: 96 }, product.chart);
+    const product = Mono.catalog.findProduct("tee-heavy");
+    const recommendation = Mono.rules.recommendSize({ chest: 96 }, product.chart);
     return [recommendation.size, recommendation.ease];
   });
   test("F06", "ไม่มีไซส์ Regular และกรณีเสมอกันเลือกไซส์เล็กกว่า", [null, "S"], () => [
-    Warin.rules.recommendSize({ chest: 125 }, Warin.catalog.findProduct("tee-heavy").chart),
-    Warin.rules.recommendSize({ chest: 90 }, [{ size: "S", circumference: 98 }, { size: "M", circumference: 102 }]).size
+    Mono.rules.recommendSize({ chest: 125 }, Mono.catalog.findProduct("tee-heavy").chart),
+    Mono.rules.recommendSize({ chest: 90 }, [{ size: "S", circumference: 98 }, { size: "M", circumference: 102 }]).size
   ]);
 
   test("MC01", "สามชิ้น 390 + 490 + 590 บาท", [147000, 59000, 88000], () => {
-    const quote = Warin.rules.quoteTrial(fixtureLines);
+    const quote = Mono.rules.quoteTrial(fixtureLines);
     return [quote.totalSatang, quote.depositSatang, quote.exposureSatang];
   });
   for (const [id, picks, expected] of [
@@ -121,7 +121,7 @@
     ["MC06", ["a", "b", "c"], [88000, 0]]
   ]) {
     test(id, "ปิดยอดกล่องเมื่อเก็บ " + (picks.join(", ") || "0 ชิ้น"), expected, () => {
-      const quote = Warin.rules.quoteSettlement(fixtureLines, 59000, picks);
+      const quote = Mono.rules.quoteSettlement(fixtureLines, 59000, picks);
       return [quote.paySatang, quote.refundSatang];
     });
   }
@@ -138,9 +138,9 @@
     const store = createDemoStore({ getNow: () => now });
     const trial = await openTrial(store);
     const received = await store.dispatch({ type: "receiveTrial", trialId: trial.id });
-    const before = Warin.rules.isExpired(received, now + 72 * 3600000 - 1);
+    const before = Mono.rules.isExpired(received, now + 72 * 3600000 - 1);
     now += 72 * 3600000;
-    const after = Warin.rules.isExpired(received, now);
+    const after = Mono.rules.isExpired(received, now);
     const returned = await store.dispatch({ type: "submitDecisions", trialId: trial.id, keep: [] });
     return [trial.expiresAt, before, after, returned.status];
   });
@@ -171,6 +171,17 @@
     const draft = await store.dispatch({ type: "addTrial", variantId: edgeVariant });
     return [settled.status, settled.settlement.paySatang, draft.length];
   });
+  test("MC12", "ออกรหัสคืน MONO และเปิดหลักฐานคืนที่ออกก่อนเปลี่ยนชื่อร้านได้", ["MONO-TR-001", "WRN-TR-001"], async () => {
+    const storage = memoryStorage();
+    const store = createDemoStore({ storage });
+    const trial = await openTrial(store);
+    await store.dispatch({ type: "receiveTrial", trialId: trial.id });
+    const returned = await store.dispatch({ type: "submitDecisions", trialId: trial.id, keep: [] });
+    const existing = JSON.parse(storage.getItem(Mono.STORAGE_KEY));
+    existing.trials[0].returnCode = "WRN-" + trial.id;
+    storage.setItem(Mono.STORAGE_KEY, JSON.stringify(existing));
+    return [returned.returnCode, createDemoStore({ storage }).read().trials[0].returnCode];
+  });
   test("O01", "กดยืนยันซื้อซ้ำและเปิดร้านใหม่ยังเจอออเดอร์เดิม", [39000, true, 1], async () => {
     const storage = memoryStorage();
     const store = createDemoStore({ storage });
@@ -182,7 +193,7 @@
   test("O02", "ตะกร้าเปลี่ยนระหว่างยืนยันไม่คิดยอดเก่า", "draft-changed", async () => {
     const store = createDemoStore();
     await store.dispatch({ type: "updatePurchase", variantId: defaultVariant, delta: 1 });
-    const signature = Warin.rules.checkoutSignature(store.read(), "purchase");
+    const signature = Mono.rules.checkoutSignature(store.read(), "purchase");
     await store.dispatch({ type: "updatePurchase", variantId: edgeVariant, delta: 1 });
     return rejectionMessage(() => checkout(store, "purchase", "changed", { signature }));
   });
@@ -201,12 +212,12 @@
   test("S01", "ลบโปรไฟล์อย่างเดียวโดยคงออเดอร์", [null, 1], async () => {
     const store = createDemoStore();
     await checkout(store, "passport", "book");
-    await store.dispatch({ type: "saveProfile", profile: Warin.catalog.sampleProfile });
+    await store.dispatch({ type: "saveProfile", profile: Mono.catalog.sampleProfile });
     await store.dispatch({ type: "clearProfile" });
     return [store.read().profile, store.read().orders.length];
   });
   test("S02", "ข้อมูลเสียมีสถานะแจ้งและรีเซ็ตเฉพาะ key ร้าน", [true, false, "other"], async () => {
-    const storage = memoryStorage({ [Warin.STORAGE_KEY]: "{", external: "other" });
+    const storage = memoryStorage({ [Mono.STORAGE_KEY]: "{", external: "other" });
     const store = createDemoStore({ storage });
     const before = store.info().corrupt;
     await store.dispatch({ type: "reset" });
@@ -218,7 +229,7 @@
     return [store.info().persistent, store.read().orders.length];
   });
 
-  Warin.runTests = async () => {
+  Mono.runTests = async () => {
     const results = [];
     for (const { id, name, expected, fn } of tests) {
       let actual;
@@ -235,7 +246,7 @@
   };
 
   if (typeof document !== "undefined") {
-    Warin.runTests().then(results => {
+    Mono.runTests().then(results => {
       const failed = results.filter(result => !result.passed).length;
       const summary = document.querySelector("#test-summary");
       summary.dataset.total = results.length;

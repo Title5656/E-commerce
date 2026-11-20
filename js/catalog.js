@@ -1,5 +1,6 @@
 (() => {
-  const Warin = globalThis.Warin ??= {};
+  const Mono = globalThis.Mono ??= globalThis.Warin ?? {};
+  globalThis.Warin = Mono; // Keep older, cached storefront scripts on the same catalog.
 
   const sizes = ["S", "M", "L", "XL"];
   const colors = {
@@ -85,7 +86,7 @@
   const findFabric = id => fabrics.find(fabric => fabric.id === id) ?? null;
   const findCafe = id => cafes.find(cafe => cafe.id === id) ?? null;
   const variantId = (productId, color, size) => [productId, color, size].join("~");
-  const productImage = (productId, color) => "./assets/" + productId + "-" + color + ".svg";
+  const productImage = (productId, color) => "./assets/products/" + productId + "-" + color + ".webp";
 
   function resolveVariant(id) {
     if (typeof id !== "string") return null;
@@ -104,7 +105,7 @@
     );
   }
 
-  Warin.catalog = {
+  Mono.catalog = {
     products, fabrics, colors, categories, cafes, sizes, measurements, sampleProfile,
     findProduct, findFabric, findCafe, variantId, productImage, resolveVariant, isProfile
   };

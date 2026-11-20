@@ -1,6 +1,6 @@
 (() => {
-  const Warin = globalThis.Warin;
-  const { views, catalog, rules, snapshotLines } = Warin;
+  const Mono = globalThis.Mono;
+  const { views, catalog, rules, snapshotLines } = Mono;
   const {
     money, date, escape, icon, breadcrumb, pageTitle, emptyState, priceRows,
     orderLine, trialBalance, purchaseBalance, paymentNotice, trialLabel
@@ -14,19 +14,19 @@
       ${pageTitle("ตะกร้าของคุณ", "", "ซื้อปกติ")}
       ${lines.length ? `<div class="split-layout">
         <section class="panel"><h2>สินค้าในตะกร้า</h2><ul class="order-lines">${lines.map(line => {
-          const label = line.name + " " + line.colorName + " ไซส์ " + line.size;
+          const label = line.name + " " + line.colorName + " ไซซ์ " + line.size;
           return orderLine(line, `<div class="quantity-row">
-            <button class="step" type="button" data-action="quantity" data-focus="minus-${line.variantId}" data-delta="-1" data-variant="${line.variantId}" aria-label="ลดจำนวน ${label}">−</button>
+            <button class="step" type="button" data-action="quantity" data-focus="minus-${line.variantId}" data-delta="-1" data-variant="${line.variantId}" aria-label="ลดจำนวน ${label}">${icon("minus")}</button>
             <span aria-label="จำนวน">${line.quantity}</span>
-            <button class="step" type="button" data-action="quantity" data-focus="plus-${line.variantId}" data-delta="1" data-variant="${line.variantId}" aria-label="เพิ่มจำนวน ${label}" ${line.quantity >= 9 ? "disabled" : ""}>+</button>
+            <button class="step" type="button" data-action="quantity" data-focus="plus-${line.variantId}" data-delta="1" data-variant="${line.variantId}" aria-label="เพิ่มจำนวน ${label}" ${line.quantity >= 9 ? "disabled" : ""}>${icon("plus")}</button>
             <button class="text-button" type="button" data-action="remove-purchase" data-variant="${line.variantId}" aria-label="นำ ${label} ออก">นำออก</button>
           </div>`);
         }).join("")}</ul></section>
         <aside class="panel totals-panel">
           <h2>สรุปตะกร้า</h2>
-          ${priceRows([["ยอดสินค้า", money(quote.subtotalSatang)], ["ค่าส่งจำลอง", money(0)], ["ยอดก่อนใช้เครดิต", money(quote.subtotalSatang), "total"]])}
+          ${priceRows([["ยอดสินค้า", money(quote.subtotalSatang)], ["ค่าจัดส่ง", money(0)], ["ยอดก่อนใช้เครดิต", money(quote.subtotalSatang), "total"]])}
           ${eligible ? `<p class="callout">ใช้เครดิตสมุดผ้า ${money(rules.CREDIT_VALUE)} ได้ในหน้าถัดไป</p>` : ""}
-          <a class="button full" href="#/checkout/purchase">ไปชำระเงินจำลอง</a>
+          <a class="button full" href="#/checkout/purchase">ตรวจสอบคำสั่งซื้อ</a>
           <a class="text-link" href="#/shop">เลือกสินค้าต่อ</a>
         </aside>
       </div>` : emptyState("ตะกร้ายังว่าง", "เลือกเสื้อหรือกางเกงที่อยากลองใส่ทุกวัน")}
@@ -35,7 +35,7 @@
 
   function trialBox(state) {
     const lines = snapshotLines(state.trialCart);
-    const active = Warin.activeTrial(state);
+    const active = Mono.activeTrial(state);
     if (active) {
       return `<div class="wrap page">
         ${pageTitle("กล่องลองที่บ้าน", "เปิดกล่องใหม่ได้เมื่อปิดกล่องปัจจุบัน", "Micro-Closet")}
@@ -71,13 +71,13 @@
   }
 
   const checkoutLabels = {
-    purchase: { title: "ยืนยันการซื้อ", href: "#/cart", back: "กลับตะกร้า", submit: "ยืนยันซื้อจำลอง" },
-    passport: { title: "ยืนยันสมุดผ้า", href: "#/passport", back: "กลับ Fabric Passport", submit: "ยืนยันซื้อสมุดจำลอง" },
-    trial: { title: "ยืนยันกล่องลอง", href: "#/trial-box", back: "กลับกล่องลอง", submit: "ยืนยันมัดจำจำลอง" }
+    purchase: { title: "ยืนยันการซื้อ", href: "#/cart", back: "กลับตะกร้า", submit: "ยืนยันคำสั่งซื้อ" },
+    passport: { title: "ยืนยันสมุดผ้า", href: "#/passport", back: "กลับ Fabric Passport", submit: "ยืนยันสั่งสมุดผ้า" },
+    trial: { title: "ยืนยันกล่องลอง", href: "#/trial-box", back: "กลับกล่องลอง", submit: "ยืนยันกล่องลอง" }
   };
 
   function passportBalance() {
-    return priceRows([["Fabric Passport", money(rules.PASSPORT_PRICE)], ["ค่าส่งจำลอง", money(0)], ["ยอดชำระจำลอง", money(rules.PASSPORT_PRICE), "total"]]);
+    return priceRows([["Fabric Passport", money(rules.PASSPORT_PRICE)], ["ค่าจัดส่ง", money(0)], ["ยอดชำระ", money(rules.PASSPORT_PRICE), "total"]]);
   }
 
   function checkout(mode, state, requestId) {
@@ -89,7 +89,7 @@
       return `<div class="wrap page">${pageTitle(config.title)}
         ${emptyState("ยังไม่มีรายการให้ยืนยัน", "เพิ่มสินค้าก่อนกลับมาทำรายการ")}</div>`;
     }
-    if (trial && Warin.activeTrial(state)) return trialBox(state);
+    if (trial && Mono.activeTrial(state)) return trialBox(state);
 
     const subtotal = rules.totalOf(lines);
     const credit = mode === "purchase" ? rules.eligibleCredit(subtotal, state.credits) : null;
@@ -100,14 +100,14 @@
 
     return `<div class="wrap page">
       ${breadcrumb(config.href, config.back)}
-      ${pageTitle(config.title, "", "Mock checkout")}
+      ${pageTitle(config.title)}
       ${paymentNotice()}
       <form class="split-layout" data-form="checkout" data-mode="${mode}" data-request="${escape(requestId)}"
         data-signature="${escape(rules.checkoutSignature(state, mode))}">
         <div class="stack">
           <section class="panel">
-            <h2>ข้อมูลจัดส่งสาธิต</h2>
-            <p class="address">ลูกค้าตัวอย่าง WARIN<br>อาคารสาธิต แขวงและเขตสมมติ กรุงเทพมหานคร</p>
+            <h2>ผู้รับตัวอย่าง</h2>
+            <p class="address">ลูกค้าตัวอย่าง MONO<br>อาคารตัวอย่าง เขตสมมติ กรุงเทพมหานคร</p>
           </section>
           <section class="panel">
             <h2>รายการ</h2>
@@ -117,7 +117,7 @@
           </section>
           ${trial ? `<fieldset class="panel cafe-choices">
             <legend>เลือกคาเฟ่สำหรับส่งคืน</legend>
-            <p>จุดคืนต่อไปนี้เป็นสถานที่สมมติสำหรับการสาธิต</p>
+            <p>จุดคืนทั้งสามแห่งเป็นสถานที่สมมติ</p>
             ${catalog.cafes.map(cafe => `<label class="choice-row">
               <input type="radio" name="cafe" value="${cafe.id}" required>
               <span><strong>${cafe.name}</strong><span>${cafe.area} · ${cafe.hours}</span></span>

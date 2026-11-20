@@ -1,5 +1,5 @@
 (() => {
-  const Warin = globalThis.Warin ??= {};
+  const Mono = globalThis.Mono ??= {};
   const PASSPORT_PRICE = 9900;
   const CREDIT_VALUE = 9900;
   const CREDIT_MINIMUM = 49900;
@@ -70,7 +70,7 @@
     return "passport";
   }
 
-  Warin.rules = {
+  Mono.rules = {
     PASSPORT_PRICE, CREDIT_VALUE, CREDIT_MINIMUM, TRIAL_LIMIT, TRIAL_LENGTH_MS,
     totalOf, eligibleCredit, quotePurchase, quoteTrial, quoteSettlement,
     classifyFit, recommendSize, isExpired, checkoutSignature

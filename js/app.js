@@ -1,5 +1,5 @@
 (() => {
-  const { views, catalog, rules, createStore, STORAGE_KEY, snapshotLines } = globalThis.Warin;
+  const { views, catalog, rules, createStore, STORAGE_KEY, snapshotLines } = globalThis.Mono;
   const content = document.querySelector("#main");
   const warning = document.querySelector("#storage-warning");
   const toast = document.querySelector("#toast");
@@ -17,11 +17,12 @@
   });
 
   const sections = {
-    shop: "shop", product: "shop", passport: "passport", studio: "studio",
+    "": "home", shop: "shop", product: "shop", passport: "passport", studio: "studio",
     "trial-box": "trial", trials: "trial", cart: "cart", checkout: "cart"
   };
   let toastTimer;
   let busy = false;
+  let studioViewer = null;
 
   function getRoute() {
     const hash = window.location.hash || "#/";
@@ -69,8 +70,11 @@
   }
 
   function updateShell(state, route = getRoute()) {
-    document.querySelector("#cart-count").textContent =
-      state.cart.reduce((count, line) => count + line.quantity, 0);
+    const itemCount = state.cart.reduce((count, line) => count + line.quantity, 0);
+    const badge = document.querySelector("#cart-count");
+    badge.textContent = itemCount;
+    badge.hidden = itemCount === 0;
+    badge.closest("a").setAttribute("aria-label", "ตะกร้าสินค้า " + itemCount + " ชิ้น");
     const section = route.name === "checkout" && route.id !== "purchase"
       ? (route.id === "trial" ? "trial" : "passport") : sections[route.name];
     document.querySelectorAll("[data-section]").forEach(link => {
@@ -80,7 +84,7 @@
 
     const { corrupt, persistent } = store.info();
     warning.innerHTML = corrupt
-      ? '<p class="callout warning">ข้อมูลเดโมเปิดไม่ได้ <a href="#/privacy">ไปที่หน้ารีเซ็ต</a> เพื่อเริ่มใหม่</p>'
+      ? '<p class="callout warning">เปิดข้อมูลร้านบนอุปกรณ์นี้ไม่ได้ <a href="#/privacy">จัดการข้อมูล</a></p>'
       : !persistent ? '<p class="callout warning">อุปกรณ์นี้บันทึกข้อมูลไม่ได้ ทำรายการได้จนกว่าจะปิดหรือรีเฟรชหน้า</p>'
         : "";
   }
@@ -89,12 +93,26 @@
     const state = store.read();
     const route = getRoute();
     updateShell(state, route);
+    studioViewer?.destroy();
+    studioViewer = null;
     content.innerHTML = getView(route, state);
+    const tabs = content.querySelector(".category-tabs");
+    if (tabs && tabs.scrollWidth > tabs.clientWidth) {
+      const active = tabs.querySelector("[aria-current]");
+      tabs.scrollLeft = active.offsetLeft - (tabs.clientWidth - active.offsetWidth) / 2;
+    }
+    const stage = content.querySelector("#studio-art");
+    if (stage) {
+      studioViewer = globalThis.Mono.fitModel.mount(stage);
+      updateStudio(content.querySelector('[data-form="profile"]'));
+    }
     const title = content.querySelector("h1");
-    document.title = title ? title.textContent.trim() + " · WARIN" : "WARIN";
+    document.title = route.name && title ? title.textContent.trim() + " · MONO" : "MONO · Clothing for simple living";
     if (newPage) {
       window.scrollTo(0, 0);
-      if (title) {
+      if (route.name === "shop" && route.query.has("search")) {
+        document.querySelector("#catalog-query").focus({ preventScroll: true });
+      } else if (title) {
         title.tabIndex = -1;
         title.focus({ preventScroll: true });
       }
@@ -146,29 +164,70 @@
     }
   }
 
-  function updateProductColor(form) {
+  function setProductPhoto(form, worn = false) {
     const product = catalog.findProduct(form.dataset.product);
-    const color = new FormData(form).get("color");
-    const name = catalog.colors[color].name;
+    const color = form.elements.color.value;
     const picture = document.querySelector("#product-image");
-    picture.src = catalog.productImage(product.id, color);
-    picture.alt = product.name + " สี" + name;
-    form.querySelector("[data-color-name]").textContent = name;
+    const source = worn ? "./assets/editorial/linen-on-model.webp" : catalog.productImage(product.id, color);
+    if (picture.getAttribute("src") !== source) picture.src = source;
+    picture.alt = (worn ? "นางแบบสวม" : "") + product.name + " สี" + catalog.colors[color].name;
+    picture.dataset.view = worn ? "worn" : "product";
+    const controls = content.querySelector(".photo-switch");
+    if (controls) {
+      controls.hidden = color !== "oatmeal";
+      controls.querySelectorAll("button").forEach(button => button.setAttribute("aria-pressed", button.dataset.view === picture.dataset.view));
+    }
+  }
+
+  function updateProductOptions(form, colorChanged) {
+    const product = catalog.findProduct(form.dataset.product);
+    const color = form.elements.color.value;
+    if (colorChanged) setProductPhoto(form);
+    form.querySelector("[data-color-name]").textContent = catalog.colors[color].name;
+    const links = views.variantLinks(product, color, form.elements.size.value);
+    const studio = form.querySelector(".fit-link");
+    if (studio) studio.href = links.studio;
+    content.querySelector("[data-share-line]").href = links.share;
+    if (location.hash !== links.product) history.replaceState(history.state, "", links.product);
   }
 
   function getProfile(data) {
     return Object.fromEntries(Object.keys(catalog.measurements).map(key => [key, Number(data.get(key))]));
   }
 
-  function updateStudio(form) {
+  function updateStudio(form, variantChanged = false) {
     const fields = new FormData(form);
     const profile = getProfile(fields);
-    const result = views.studioResult(profile, catalog.findProduct(fields.get("product")), fields.get("size"));
-    for (const [key, value] of Object.entries(profile)) document.querySelector("#read-" + key).textContent = value + " ซม.";
-    document.querySelector("#studio-art").innerHTML = result.image;
-    document.querySelector("#fit-result").innerHTML = result.result;
-    document.querySelector("#studio-recommendation").textContent = result.recommendation;
-    document.querySelector("#studio-product").href = result.link;
+    const product = catalog.findProduct(fields.get("product"));
+    const size = fields.get("size");
+    const color = product.colors.includes(fields.get("color")) ? fields.get("color") : product.colors[0];
+    if (form.dataset.garment !== product.id) {
+      form.querySelector("#studio-colors").innerHTML = views.studioColors(product, color);
+      form.dataset.garment = product.id;
+    }
+    for (const [key, value] of Object.entries(profile)) {
+      form.querySelector("#read-" + key).value = value + " ซม.";
+      const field = form.elements[key];
+      field.style.setProperty("--progress", (value - field.min) / (field.max - field.min) * 100 + "%");
+    }
+    const result = views.studioResult(profile, product, size, color);
+    const verdict = form.querySelector("#fit-result");
+    if (verdict.innerHTML !== result.result) verdict.innerHTML = result.result;
+    const advice = form.querySelector("#studio-recommendation");
+    if (advice.textContent !== result.recommendation) advice.textContent = result.recommendation;
+    form.querySelector("#studio-product").href = result.link;
+    const colorName = catalog.colors[color].name;
+    content.querySelector("#studio-garment").textContent = product.english;
+    content.querySelector("#studio-variant").textContent = colorName + " / " + size;
+    const fallback = content.querySelector(".fitting-fallback");
+    const image = catalog.productImage(product.id, color);
+    if (fallback.getAttribute("src") !== image) fallback.src = image;
+    fallback.alt = product.name + " สี" + colorName;
+    studioViewer?.update(profile, product, size, color);
+    if (variantChanged) {
+      const query = new URLSearchParams({ product: product.id, size, color });
+      history.replaceState(history.state, "", "#/studio?" + query);
+    }
   }
 
   function trialChoices(form) {
@@ -182,7 +241,10 @@
   const submitForms = {
     filters(form, data) {
       const query = new URLSearchParams();
-      for (const key of ["category", "color"]) if (data.get(key)) query.set(key, data.get(key));
+      for (const key of ["category", "color", "q"]) {
+        const value = data.get(key)?.trim();
+        if (value) query.set(key, value);
+      }
       navigate("#/shop" + (query.size ? "?" + query : ""));
     },
     variant(form, data, trigger) {
@@ -232,6 +294,18 @@
   }
 
   const actions = {
+    "product-photo"(trigger) {
+      setProductPhoto(content.querySelector('[data-form="variant"]'), trigger.dataset.view === "worn");
+    },
+    "card-color"(trigger) {
+      const card = trigger.closest(".product-card");
+      const product = catalog.findProduct(card.dataset.product);
+      const color = trigger.dataset.color;
+      card.querySelector("img").src = catalog.productImage(product.id, color);
+      card.querySelector("img").alt = product.name + " สี" + catalog.colors[color].name;
+      card.querySelectorAll("a").forEach(link => { link.href = "#/product/" + product.id + "?color=" + color; });
+      card.querySelectorAll("[data-color]").forEach(button => button.setAttribute("aria-pressed", button === trigger));
+    },
     "size-chart"() {
       const chart = document.querySelector("#size-chart");
       chart.open = true;
@@ -261,7 +335,11 @@
     },
     "clear-profile"(trigger) {
       commit(trigger, { type: "clearProfile" }, () => {
-        render({ newPage: true });
+        for (const [key, value] of Object.entries(catalog.sampleProfile)) trigger.form.elements[key].value = value;
+        updateStudio(trigger.form);
+        document.querySelector("#profile-note").textContent = "เมื่อกดบันทึก สัดส่วนจะอยู่ในเบราว์เซอร์นี้";
+        trigger.form.querySelector('[data-action="sample-profile"]').focus({ preventScroll: true });
+        trigger.hidden = true;
         notify("ลบโปรไฟล์แล้ว");
       });
     },
@@ -270,7 +348,7 @@
     reset(trigger) {
       commit(trigger, { type: "reset" }, () => {
         navigate("#/");
-        notify("เริ่มเดโมใหม่แล้ว");
+        notify("ล้างข้อมูลร้านบนอุปกรณ์แล้ว");
       });
     },
     receiveTrial: trialClick,
@@ -282,6 +360,37 @@
     event.preventDefault();
     content.focus();
   });
+
+  const header = document.querySelector(".site-header");
+  const menu = header.querySelector(".menu-toggle");
+  function setMenu(open) {
+    header.classList.toggle("nav-open", open);
+    menu.setAttribute("aria-expanded", open);
+    menu.setAttribute("aria-label", open ? "ปิดเมนู" : "เปิดเมนู");
+    menu.querySelector('[data-icon="menu"]').hidden = open;
+    menu.querySelector('[data-icon="x"]').hidden = !open;
+  }
+  menu.addEventListener("click", event => {
+    const open = menu.getAttribute("aria-expanded") !== "true";
+    setMenu(open);
+    if (open && !event.detail) header.querySelector("nav a").focus();
+  });
+  header.addEventListener("click", event => {
+    const link = event.target.closest("a");
+    if (!link) return;
+    setMenu(false);
+    if (link.hash === location.hash && link.hash === "#/shop?search=1") document.querySelector("#catalog-query")?.focus();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && menu.getAttribute("aria-expanded") === "true") {
+      setMenu(false);
+      menu.focus();
+    }
+  });
+  document.addEventListener("click", event => {
+    if (header.classList.contains("nav-open") && !header.contains(event.target)) setMenu(false);
+  });
+  matchMedia("(max-width: 760px)").addEventListener("change", () => setMenu(false));
 
   content.addEventListener("click", event => {
     const trigger = event.target.closest("[data-action]");
@@ -304,8 +413,8 @@
   content.addEventListener("change", event => {
     const input = event.target;
     const form = input.form;
-    if (form?.dataset.form === "variant" && input.name === "color") updateProductColor(form);
-    if (form?.dataset.form === "profile" && input.type !== "range") updateStudio(form);
+    if (form?.dataset.form === "variant") updateProductOptions(form, input.name === "color");
+    if (form?.dataset.form === "profile" && input.type !== "range") updateStudio(form, true);
     if (form?.dataset.form === "checkout" && input.name === "credit") {
       const state = store.read();
       const quote = rules.quotePurchase(snapshotLines(state.cart), state.credits, input.checked ? input.value : null);
@@ -325,7 +434,10 @@
     }
   }, true);
 
-  window.addEventListener("hashchange", () => render({ newPage: true }));
+  window.addEventListener("hashchange", () => {
+    setMenu(false);
+    render({ newPage: true });
+  });
   window.addEventListener("pageshow", event => {
     if (event.persisted) {
       store.refresh();
@@ -333,10 +445,18 @@
     }
   });
   window.addEventListener("storage", event => {
-    if (event.key === STORAGE_KEY || event.key === null) {
-      store.refresh();
-      render();
+    if (event.key !== STORAGE_KEY && event.key !== null) return;
+    const previousProfile = studioViewer && store.read().profile;
+    store.refresh();
+    if (studioViewer && event.newValue !== null) {
+      const state = store.read();
+      const sameProfile = Object.keys(catalog.measurements).every(key => previousProfile?.[key] === state.profile?.[key]);
+      if (sameProfile) {
+        updateShell(state);
+        return;
+      }
     }
+    render();
   });
 
   setInterval(() => {

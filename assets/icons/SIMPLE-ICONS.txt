@@ -1,0 +1,5 @@
+LINE brand icon from Simple Icons
+https://github.com/simple-icons/simple-icons/blob/develop/icons/line.svg
+Simple Icons artwork is distributed under CC0 1.0 Universal.
+https://creativecommons.org/publicdomain/zero/1.0/
+The LINE mark identifies the service used by the product sharing link.

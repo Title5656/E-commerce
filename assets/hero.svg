@@ -32,7 +32,7 @@
   <rect x="63" y="61" width="41" height="31" rx="1" fill="#7f896e"/>
   <rect x="109" y="61" width="41" height="31" rx="1" fill="#56584f"/>
   <path d="M17 61h133v31H17z" fill="url(#grain)"/>
-  <text x="17" y="30" font-family="system-ui,sans-serif" font-weight="750" font-size="20" fill="#303b2d" letter-spacing="3">WARIN.</text>
+  <text x="17" y="30" font-family="system-ui,sans-serif" font-weight="750" font-size="20" fill="#303b2d" letter-spacing="3">MONO</text>
   <text x="17" y="47" font-family="system-ui,sans-serif" font-size="8" fill="#57564b" letter-spacing="2">FABRIC PASSPORT</text>
 </g>
 </svg>

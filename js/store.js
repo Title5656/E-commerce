@@ -1,6 +1,7 @@
 (() => {
-  const Warin = globalThis.Warin;
-  const { catalog, rules } = Warin;
+  const Mono = globalThis.Mono;
+  const { catalog, rules } = Mono;
+  // Keep existing orders, credits and saved measurements accessible after the rebrand.
   const STORAGE_KEY = "itds294.warin.v1";
   const trialStatuses = ["awaiting_delivery", "trying", "awaiting_return", "settled", "review"];
 
@@ -202,7 +203,7 @@
       trial.keep = keep;
       if (keep.length === trial.lines.length) return settle(trial, now);
       trial.status = "awaiting_return";
-      trial.returnCode = "WRN-" + trial.id;
+      trial.returnCode = "MONO-" + trial.id;
       return trial;
     },
     completeReturn(trial, action, now) {
@@ -287,8 +288,8 @@
     };
   }
 
-  Warin.createStore = createStore;
-  Warin.STORAGE_KEY = STORAGE_KEY;
-  Warin.activeTrial = activeTrial;
-  Warin.snapshotLines = snapshotLines;
+  Mono.createStore = createStore;
+  Mono.STORAGE_KEY = STORAGE_KEY;
+  Mono.activeTrial = activeTrial;
+  Mono.snapshotLines = snapshotLines;
 })();

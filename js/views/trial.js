@@ -1,5 +1,5 @@
 (() => {
-  const { views, rules, catalog } = globalThis.Warin;
+  const { views, rules, catalog } = globalThis.Mono;
   const {
     escape, date, icon, breadcrumb, pageTitle, orderLine, emptyState, trialLabel,
     trialBalance, settlementRows, paymentNotice

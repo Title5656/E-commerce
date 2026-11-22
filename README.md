@@ -2,7 +2,7 @@
 
 ต้นแบบร้านเสื้อยืดและโปโล 6 รุ่น เลือกซื้อได้โดยตรง มี Fabric Kit และ Fit-Twin ช่วยเลือกผ้าและไซซ์ ส่งทั่วประเทศ
 
-[หน้าร้าน GitHub Pages](https://title5656.github.io/E-commerce/) · [ชุดทดสอบบน Pages](https://title5656.github.io/E-commerce/tests.html)
+[หน้าร้าน GitHub Pages](https://title5656.github.io/E-commerce/)
 
 ลิงก์ Pages แสดงรุ่นที่เผยแพร่ล่าสุด การแก้ไขในเครื่องต้อง push และรอ deployment ก่อนปรากฏบนเว็บ
 

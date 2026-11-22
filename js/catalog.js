@@ -1,112 +1,57 @@
 (() => {
   const Mono = globalThis.Mono ??= globalThis.Warin ?? {};
-  globalThis.Warin = Mono; // Keep older, cached storefront scripts on the same catalog.
-
+  globalThis.Warin = Mono;
   const sizes = ["S", "M", "L", "XL"];
-  const colors = {
-    chalk: { name: "ขาวชอล์ก", hex: "#eeece1" },
-    oatmeal: { name: "โอ๊ตมีล", hex: "#c4af94" },
-    olive: { name: "เขียวมะกอก", hex: "#737b60" },
-    charcoal: { name: "ชาร์โคล", hex: "#444a46" }
-  };
-
-  const categories = {
-    tee: "เสื้อยืด", polo: "โปโล", shirt: "เชิ้ต", shorts: "กางเกงขาสั้น", trousers: "กางเกงขายาว"
-  };
-
+  const colors = { white: { name: "ขาว (สีสาธิต)", hex: "#f3f2ec" } };
+  const categories = { tee: "เสื้อยืด", polo: "โปโล" };
+  // Codes are identifiers, never numbers. In particular 0, 2.1 and 2.2 are distinct.
   const fabrics = [
-    { id: "heavy-cotton", name: "Heavy Cotton Jersey", gsm: 240, feel: "แน่น นุ่ม อยู่ทรง", detail: "ผ้าคอตตอนเนื้อแน่นที่ให้โครงกับเสื้อยืด เหมาะกับวันที่อยากได้ทรงชัดขึ้น", color: "chalk" },
-    { id: "pique", name: "Cotton Piqué", gsm: 200, feel: "มีสัมผัส ระบายอากาศ", detail: "ผิวถักเป็นลายละเอียด ให้สัมผัสแตกต่างจากเสื้อยืดผ้าเรียบ", color: "olive" },
-    { id: "linen-blend", name: "Cotton–Linen Blend", gsm: 165, feel: "โปร่ง มีเส้นใยให้เห็น", detail: "ผ้าผสมที่มีผิวเป็นธรรมชาติและเกิดรอยยับได้ตามการใส่", color: "oatmeal" },
-    { id: "light-cotton", name: "Light Cotton Jersey", gsm: 155, feel: "เบา นุ่ม ทิ้งตัว", detail: "ผ้าเจอร์ซีย์น้ำหนักเบาสำหรับสวมเดี่ยวหรือใส่เป็นชั้นใน", color: "chalk" },
-    { id: "twill", name: "Cotton Twill", gsm: 225, feel: "มีลายทแยง อยู่ทรง", detail: "ลายทอทแยงช่วยให้กางเกงมีโครงและมีสัมผัสเป็นเอกลักษณ์", color: "oatmeal" },
-    { id: "poplin", name: "Cotton Poplin", gsm: 145, feel: "ผิวเรียบ สัมผัสเบา", detail: "ผ้าทอเนื้อละเอียดสำหรับกางเกงทรงตรงที่ใส่สบาย", color: "charcoal" }
+    { id: "cvc32", code: "1", name: "CVC 32", gsm: 150, feel: "เจอร์ซีย์เนื้อบาง", detail: "เปรียบเทียบสัมผัส ความทึบ และการทิ้งตัวกับผ้าเบอร์ 32 อีกชนิด" },
+    { id: "comb32", code: "0", name: "Cotton Comb 32", gsm: 160, feel: "เจอร์ซีย์น้ำหนักเบา", detail: "ผ้าคอตตอนสำหรับเสื้อยืดคอกลม เทียบกับ CVC 32 ภายใต้แสงเดียวกัน" },
+    { id: "semi20", code: "2.1", name: "Cotton Semi 20", gsm: 190, feel: "เจอร์ซีย์น้ำหนักปานกลาง", detail: "เปรียบเทียบผิวสัมผัสกับ Cotton Comb 20 ที่น้ำหนักตัวอย่างเท่ากัน" },
+    { id: "comb20", code: "2.2", name: "Cotton Comb 20", gsm: 190, feel: "เจอร์ซีย์น้ำหนักปานกลาง", detail: "เทียบความเรียบและการอยู่ทรงด้วยชิ้นผ้าจริงก่อนเลือกเสื้อ" },
+    { id: "tk", code: "20", name: "จูติ TK", gsm: 240, feel: "ผิวถักจูติสำหรับโปโล", detail: "เทียบผิวถักและความทึบกับ TC Micro สเปกเส้นใยต้องยืนยันกับโรงงานก่อนขายจริง" },
+    { id: "tc-micro", code: "24", name: "จูติ TC Micro", gsm: 240, feel: "ผิวถักจูติสำหรับโปโล", detail: "ใช้กับเสื้อโปโล TC Micro สเปกเส้นใยต้องยืนยันกับโรงงานก่อนขายจริง" }
   ];
-
-  function chart(circumferences, lengths) {
-    return sizes.map((size, index) => ({
-      size, circumference: circumferences[index], length: lengths[index]
-    }));
-  }
-
-  const products = [
-    {
-      id: "tee-heavy", name: "เสื้อยืดคอตตอนหนา", english: "Heavy Cotton Tee", category: "tee",
-      fabricId: "heavy-cotton", unitSatang: 39000, colors: ["chalk", "charcoal"], studio: true,
-      chart: chart([98, 106, 114, 122], [63, 66, 69, 72]),
-      detail: "เสื้อยืดคอกลม เนื้อผ้า 240 gsm ให้ทรงชัด ใส่เดี่ยวหรือซ้อนกับเชิ้ตได้"
-    },
-    {
-      id: "polo-pique", name: "เสื้อโปโลปิเก้", english: "Piqué Polo", category: "polo",
-      fabricId: "pique", unitSatang: 49000, colors: ["olive", "oatmeal"], studio: false,
-      chart: chart([98, 106, 114, 122], [64, 67, 70, 73]),
-      detail: "คอปกเรียบกับผ้าปิเก้ผิวละเอียด สำหรับวันที่อยากแต่งตัวขึ้นอีกนิด"
-    },
-    {
-      id: "shirt-linen", name: "เชิ้ตลินินทรงสบาย", english: "Linen Blend Shirt", category: "shirt",
-      fabricId: "linen-blend", unitSatang: 59000, colors: ["oatmeal", "chalk"], studio: true,
-      chart: chart([102, 110, 118, 126], [66, 69, 72, 75]),
-      detail: "เชิ้ตแขนยาวผ้าคอตตอนผสมลินิน ทรงโปร่ง ใส่ทับเสื้อยืดตัวโปรดได้"
-    },
-    {
-      id: "tee-air", name: "เสื้อยืดคอตตอนเบา", english: "Light Cotton Tee", category: "tee",
-      fabricId: "light-cotton", unitSatang: 35000, colors: ["oatmeal", "olive"], studio: false,
-      chart: chart([96, 104, 112, 120], [62, 65, 68, 71]),
-      detail: "เสื้อยืดคอกลมเนื้อเบาและทิ้งตัว สำหรับใส่ได้บ่อยในวันอากาศอุ่น"
-    },
-    {
-      id: "shorts-twill", name: "กางเกงขาสั้นทวิลล์", english: "Twill Shorts", category: "shorts",
-      fabricId: "twill", unitSatang: 49900, colors: ["oatmeal", "charcoal"], studio: false,
-      chart: chart([68, 76, 84, 92], [18, 19, 20, 21]),
-      detail: "กางเกงขาสั้นผ้าทวิลล์ทรงตรง ผิวทอทแยงและมีกระเป๋าด้านข้าง"
-    },
-    {
-      id: "trousers-easy", name: "กางเกงขายาวทรงตรง", english: "Easy Straight Trousers", category: "trousers",
-      fabricId: "poplin", unitSatang: 69000, colors: ["charcoal", "olive"], studio: false,
-      chart: chart([70, 78, 86, 94], [71, 73, 75, 77]),
-      detail: "กางเกงขายาวทรงตรงผ้าป๊อปลินเรียบ เบาพอสำหรับใส่สลับกับกางเกงตัวเดิมทุกวัน"
-    }
+  const definitions = [
+    ["tee-cvc32", "เสื้อยืดคอกลม CVC 32", "CVC 32 Tee", "tee", "cvc32", 35000],
+    ["tee-comb32", "เสื้อยืดคอกลม Cotton Comb 32", "Cotton Comb 32 Tee", "tee", "comb32", 35000],
+    ["tee-semi20", "เสื้อยืดคอกลม Cotton Semi 20", "Cotton Semi 20 Tee", "tee", "semi20", 39000],
+    ["tee-comb20", "เสื้อยืดคอกลม Cotton Comb 20", "Cotton Comb 20 Tee", "tee", "comb20", 39000],
+    ["polo-tk", "เสื้อโปโลจูติ TK", "TK Piqué Polo", "polo", "tk", 49000],
+    ["polo-tc-micro", "เสื้อโปโลจูติ TC Micro", "TC Micro Piqué Polo", "polo", "tc-micro", 49000]
   ];
-
-  const cafes = [
-    { id: "ari", name: "คาเฟ่อารีย์", area: "อารีย์", hours: "09.00–18.00 น." },
-    { id: "siam", name: "คาเฟ่สยาม", area: "สยาม", hours: "10.00–19.00 น." },
-    { id: "salaya", name: "คาเฟ่ศาลายา", area: "ศาลายา", hours: "09.00–17.00 น." }
-  ];
-
+  const products = definitions.map(([id, name, english, category, fabricId, unitSatang]) => ({
+    id, name, english, category, fabricId, unitSatang, colors: ["white"], studio: true,
+    chartSource: "ขนาดตัวอย่างสำหรับสาธิต ยังไม่ใช่ค่าที่วัดจากล็อตผลิตจริง",
+    lot: "DEMO-V6", imageNote: "ภาพสร้างด้วย AI เพื่อสาธิต ไม่ใช่ภาพสินค้าจริง",
+    chart: sizes.map((size, i) => ({ size, circumference: 98 + i * 8, length: (category === "polo" ? 64 : 63) + i * 3 })),
+    detail: category === "polo" ? "เสื้อโปโลคอปกแขนสั้น สำหรับวันเรียน วันนำเสนองาน และวันทำงาน" : "เสื้อยืดคอกลมแขนสั้น เรียบง่ายสำหรับสวมใส่ทุกวัน"
+  }));
   const measurements = {
-    height: { label: "ส่วนสูง", min: 150, max: 190 },
-    shoulder: { label: "ความกว้างไหล่", min: 38, max: 54 },
-    chest: { label: "รอบอก", min: 80, max: 125 },
-    waist: { label: "รอบเอว", min: 65, max: 115 },
+    height: { label: "ส่วนสูง", min: 150, max: 190 }, shoulder: { label: "ความกว้างไหล่", min: 38, max: 54 },
+    chest: { label: "รอบอกหุ่น", min: 80, max: 125 }, waist: { label: "รอบเอว", min: 65, max: 115 },
     leg: { label: "ความยาวช่วงขา", min: 70, max: 105 }
   };
   const sampleProfile = { height: 170, shoulder: 44, chest: 96, waist: 78, leg: 82 };
-  const findProduct = id => products.find(product => product.id === id) ?? null;
-  const findFabric = id => fabrics.find(fabric => fabric.id === id) ?? null;
-  const findCafe = id => cafes.find(cafe => cafe.id === id) ?? null;
+  const findProduct = id => products.find(p => p.id === id) ?? null;
+  const findFabric = id => fabrics.find(f => f.id === id) ?? null;
+  const findByFabricCode = code => {
+    const fabric = fabrics.find(f => f.code === code);
+    return fabric ? products.find(p => p.fabricId === fabric.id) ?? null : null;
+  };
   const variantId = (productId, color, size) => [productId, color, size].join("~");
-  const productImage = (productId, color) => "./assets/products/" + productId + "-" + color + ".webp";
-
+  const productImage = (id, color) => "./assets/products/" + id + "-" + color + ".webp";
   function resolveVariant(id) {
     if (typeof id !== "string") return null;
-    const [productId, color, size, extra] = id.split("~");
-    const product = findProduct(productId);
-    if (extra !== undefined || !product?.colors.includes(color) || !sizes.includes(size)) return null;
-    return {
-      variantId: id, productId, name: product.name, color, colorName: colors[color].name,
-      size, unitSatang: product.unitSatang
-    };
+    const [productId, color, size, extra] = id.split("~"), p = findProduct(productId);
+    if (extra !== undefined || !p?.colors.includes(color) || !sizes.includes(size)) return null;
+    return { variantId: id, productId, name: p.name, fabricCode: findFabric(p.fabricId).code,
+      color, colorName: colors[color].name, size, unitSatang: p.unitSatang, lot: p.lot,
+      garmentChest: p.chart.find(r => r.size === size).circumference,
+      garmentLength: p.chart.find(r => r.size === size).length };
   }
-
-  function isProfile(profile) {
-    return profile && Object.entries(measurements).every(([key, range]) =>
-      Number.isInteger(profile[key]) && profile[key] >= range.min && profile[key] <= range.max
-    );
-  }
-
-  Mono.catalog = {
-    products, fabrics, colors, categories, cafes, sizes, measurements, sampleProfile,
-    findProduct, findFabric, findCafe, variantId, productImage, resolveVariant, isProfile
-  };
+  const isProfile = p => !!p && Object.entries(measurements).every(([k, r]) => Number.isInteger(p[k]) && p[k] >= r.min && p[k] <= r.max);
+  Mono.catalog = { products, fabrics, colors, categories, sizes, measurements, sampleProfile,
+    findProduct, findFabric, findByFabricCode, variantId, productImage, resolveVariant, isProfile };
 })();

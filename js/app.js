@@ -1,476 +1,115 @@
 (() => {
-  const { views, catalog, rules, createStore, STORAGE_KEY, snapshotLines } = globalThis.Mono;
-  const content = document.querySelector("#main");
-  const warning = document.querySelector("#storage-warning");
-  const toast = document.querySelector("#toast");
-  let storage;
-  try {
-    storage = window.localStorage;
-  } catch {
-    storage = null;
+  const {views,catalog,rules,createStore,STORAGE_KEY,LEGACY_KEY,snapshotLines}=globalThis.Mono;
+  const content=document.querySelector("#main"),warning=document.querySelector("#storage-warning"),toast=document.querySelector("#toast");
+  let storage;try{storage=localStorage;}catch{storage=null;}
+  const makeId=()=>crypto.randomUUID?.()??Date.now()+"-"+Math.random().toString(36).slice(2);
+  const store=createStore({storage,runExclusive:task=>navigator.locks?navigator.locks.request(STORAGE_KEY,task):task()});
+  let busy=false,studioViewer=null,toastTimer,visitAttribution=rules.attribution(null);
+  const sections={"":"home",shop:"shop",product:"shop",kit:"kit",passport:"kit",studio:"studio",orders:"orders",order:"orders",cart:"cart",checkout:"cart"};
+  function getRoute(){const [path,q=""]=(location.hash||"#/").slice(1).split("?",2),parts=path.startsWith("/")?path.slice(1).split("/"):["missing"];return {name:parts[0],id:parts[1],extra:parts.length>2,query:new URLSearchParams(q)};}
+  const missing=()=>`<div class="wrap page">${views.pageTitle("หาหน้านี้ไม่เจอ")}${views.emptyState("เปิดรายการนี้ไม่ได้","ตรวจลิงก์หรือกลับไปเลือกเสื้อ")}</div>`;
+  function getView(r,s){
+    const {name,id,query}=r;
+    if(["trial-box","trials"].includes(name)||name==="checkout"&&id==="trial")return views.orders(s);
+    if(r.extra)return missing();
+    if(name==="product"){const p=catalog.findProduct(id);return p?views.productDetail(p,s,query):`<div class="wrap page">${views.pageTitle("สินค้าเดิมไม่อยู่ในคอลเลกชันแล้ว")}${views.emptyState("เลือกดูเสื้อรุ่นปัจจุบัน","ประวัติคำสั่งซื้อเดิมยังเปิดได้จากเมนูคำสั่งซื้อ")}</div>`;}
+    if(name==="checkout")return ["purchase","kit","passport"].includes(id)?views.checkout(id==="passport"?"kit":id,{...s,attribution:visitAttribution},makeId()):missing();
+    if(name==="order"){const o=s.orders.find(o=>o.id===id);return o?views.order(s,o):missing();}
+    if(id!==undefined)return missing();
+    switch(name){case "":return views.home();case "shop":return views.shop(query);case "kit":case "passport":return views.passport(s);case "studio":return views.studio(s,query);case "cart":return views.cart(s);case "orders":return views.orders(s);case "privacy":return views.privacy();case "insights":return views.insights(s);default:return missing();}
   }
-
-  const makeId = () => globalThis.crypto?.randomUUID?.() ?? Date.now() + "-" + Math.random().toString(36).slice(2);
-  const store = createStore({
-    storage, makeId,
-    runExclusive: task => navigator.locks ? navigator.locks.request(STORAGE_KEY, task) : task()
-  });
-
-  const sections = {
-    "": "home", shop: "shop", product: "shop", passport: "passport", studio: "studio",
-    "trial-box": "trial", trials: "trial", cart: "cart", checkout: "cart"
+  function updateShell(s,r=getRoute()){
+    const count=s.cart.reduce((n,l)=>n+l.quantity,0),badge=document.querySelector("#cart-count");badge.textContent=count;badge.hidden=count===0;badge.closest("a").setAttribute("aria-label","ตะกร้าสินค้า "+count+" ชิ้น");
+    const section=r.name==="checkout"&&["kit","passport"].includes(r.id)?"kit":sections[r.name];
+    document.querySelectorAll("[data-section]").forEach(a=>{if(a.dataset.section===section)a.setAttribute("aria-current","true");else a.removeAttribute("aria-current");});
+    const info=store.info();
+    warning.innerHTML=info.corrupt?'<p class="callout warning">เปิดข้อมูลร้านบนอุปกรณ์นี้ไม่ได้ <a href="#/privacy">จัดการข้อมูล</a></p>':!info.persistent?'<p class="callout warning">อุปกรณ์นี้บันทึกข้อมูลไม่ได้ ทำรายการได้จนกว่าจะปิดหรือรีเฟรชหน้า</p>':s.migrationNotice?`<p class="callout">${views.escape(s.migrationNotice)} <button class="text-button" type="button" data-dismiss-migration>รับทราบ</button></p>`:"";
+  }
+  function render({newPage=false,focusKey=""}={}){
+    const s=store.read(),r=getRoute();updateShell(s,r);studioViewer?.destroy();studioViewer=null;content.innerHTML=getView(r,s);
+    const stage=content.querySelector("#studio-art");if(stage){studioViewer=globalThis.Mono.fitModel.mount(stage);updateStudio(content.querySelector('[data-form="profile"]'));}
+    const title=content.querySelector("h1");document.title=title?title.textContent.trim()+" · MONO":"MONO";
+    if(newPage){scrollTo(0,0);if(r.name==="shop"&&r.query.has("search"))content.querySelector("#catalog-query")?.focus({preventScroll:true});else if(title){title.tabIndex=-1;title.focus({preventScroll:true});}}
+    else if(focusKey)[...content.querySelectorAll("[data-focus]")].find(e=>e.dataset.focus===focusKey)?.focus({preventScroll:true});
+  }
+  function notify(message,error=false){clearTimeout(toastTimer);toast.textContent=message;toast.classList.toggle("toast-error",error);toast.classList.add("visible");toastTimer=setTimeout(()=>{toast.classList.remove("visible");toast.textContent="";},error?6500:3800);}
+  function navigate(hash,replace=false){if(location.hash===hash)render({newPage:true});else if(replace)location.replace(hash);else location.hash=hash;}
+  async function commit(trigger,action,after){
+    if(busy)return;busy=true;const startedOn=location.hash;if(trigger instanceof HTMLButtonElement)trigger.disabled=true;
+    try{const result=await store.dispatch(action);const moved=location.hash!==startedOn;updateShell(store.read());after?.(result);if(moved)render();}catch(e){if(["draft-changed","credit-unavailable"].includes(e.code)&&getRoute().name==="checkout")render();else updateShell(store.read());notify(e.message,true);}finally{busy=false;if(trigger instanceof HTMLButtonElement&&trigger.isConnected)trigger.disabled=false;}
+  }
+  function updateProductOptions(form){
+    const p=catalog.findProduct(form.dataset.product),color=form.elements.color.value,links=views.variantLinks(p,color,form.elements.size.value);
+    form.querySelector(".fit-link").href=links.studio;content.querySelector("[data-share-line]").href=links.share;
+    if(location.hash!==links.product)history.replaceState(history.state,"",links.product);
+  }
+  const getProfile=data=>Object.fromEntries(Object.keys(catalog.measurements).map(k=>[k,Number(data.get(k))]));
+  function updateStudio(form,variantChanged=false){
+    const data=new FormData(form),profile=getProfile(data),p=catalog.findProduct(data.get("product")),size=data.get("size"),color=p.colors.includes(data.get("color"))?data.get("color"):p.colors[0];
+    if(form.dataset.garment!==p.id){form.querySelector("#studio-colors").innerHTML=views.studioColors(p,color);form.dataset.garment=p.id;}
+    for(const [k,v] of Object.entries(profile)){form.querySelector("#read-"+k).value=v+" ซม.";const field=form.elements[k];field.style.setProperty("--progress",(v-field.min)/(field.max-field.min)*100+"%");}
+    const result=views.studioResult(profile,p,size,color);form.querySelector("#fit-result").innerHTML=result.result;form.querySelector("#studio-recommendation").textContent=result.recommendation;form.querySelector("#studio-product").href=result.link;
+    content.querySelector("#studio-garment").textContent=p.english;content.querySelector("#studio-variant").textContent=catalog.colors[color].name+" / "+size;
+    const fallback=content.querySelector(".fitting-fallback"),src=catalog.productImage(p.id,color);if(fallback.getAttribute("src")!==src)fallback.src=src;fallback.alt="ภาพจำลอง "+p.name;
+    content.querySelector("#studio-size-table").innerHTML=views.sizeTable(p);studioViewer?.update(profile,p,size,color);
+    if(variantChanged){const q=new URLSearchParams({product:p.id,size,color});copyTracking(getRoute().query,q);history.replaceState(history.state,"","#/studio?"+q);}
+  }
+  function previewCode(form){
+    store.refresh();const s=store.read(),code=form.elements.credit.value.trim(),found=s.credits.find(c=>c.id===code&&c.usedBy===null);
+    const quote=rules.quotePurchase(snapshotLines(s.cart),s.credits,code);content.querySelector("#checkout-balance").innerHTML=views.purchaseBalance(quote);
+    const note=content.querySelector("#code-feedback");note.textContent=!code?"ยังไม่ได้ใช้โค้ด":found?"ใช้โค้ดลดค่าเสื้อ ฿99 ได้":"โค้ดไม่ถูกต้องหรือใช้แล้ว กรุณาตรวจใบแนบ";note.classList.toggle("code-error",!!code&&!found);
+  }
+  const submits={
+    filters(form,data){const q=new URLSearchParams();for(const k of ["category","color","q"]){const v=data.get(k)?.trim();if(v)q.set(k,v);}copyTracking(getRoute().query,q);navigate("#/shop"+(q.size?"?"+q:""));},
+    variant(form,data,trigger){const variantId=catalog.variantId(form.dataset.product,data.get("color"),data.get("size"));commit(trigger,{type:"updatePurchase",variantId,delta:1},()=>{form.querySelector("[data-variant-note]").innerHTML='เพิ่มแล้ว <a href="#/cart">เปิดตะกร้า</a>';notify("เพิ่มลงตะกร้าแล้ว");});},
+    checkout(form,data,trigger){commit(trigger,{type:"checkout",mode:form.dataset.mode,requestId:form.dataset.request,signature:form.dataset.signature,creditId:data.get("credit"),attribution:visitAttribution},o=>navigate("#/order/"+o.id,true));},
+    profile(form,data,trigger){commit(trigger,{type:"saveProfile",profile:getProfile(data)},()=>{content.querySelector("#profile-note").textContent="บันทึกสัดส่วนในเบราว์เซอร์นี้แล้ว";content.querySelector("#delete-profile").hidden=false;notify("บันทึกสัดส่วนแล้ว");});}
   };
-  let toastTimer;
-  let busy = false;
-  let studioViewer = null;
-
-  function getRoute() {
-    const hash = window.location.hash || "#/";
-    const [path, query = ""] = hash.slice(1).split("?", 2);
-    const parts = path.startsWith("/") ? path.slice(1).split("/") : ["missing"];
-    return { name: parts[0], id: parts[1], extra: parts.length > 2, query: new URLSearchParams(query) };
-  }
-
-  function missing(detail = "ตรวจลิงก์หรือกลับไปเลือกเสื้อผ้า") {
-    return `<div class="wrap page">${views.pageTitle("หาหน้านี้ไม่เจอ")}${views.emptyState("เปิดรายการนี้ไม่ได้", detail)}</div>`;
-  }
-
-  function getView(route, state) {
-    const { name, id, extra, query } = route;
-    if (extra) return missing();
-    if (name === "product") {
-      const product = catalog.findProduct(id);
-      return product ? views.productDetail(product, state, query) : missing();
-    }
-    if (name === "checkout") {
-      return ["purchase", "passport", "trial"].includes(id) ? views.checkout(id, state, makeId()) : missing();
-    }
-    if (name === "order") {
-      const order = state.orders.find(item => item.id === id);
-      return order ? views.order(state, order) : missing("ใบคำสั่งซื้อจะอยู่ในเบราว์เซอร์ที่ใช้ทำรายการ");
-    }
-    if (name === "trials" && id) {
-      const trial = state.trials.find(item => item.id === id);
-      return trial ? views.tracker(trial, Date.now()) : missing("กล่องลองจะอยู่ในเบราว์เซอร์ที่ใช้ทำรายการ");
-    }
-
-    if (id !== undefined) return missing();
-    switch (name) {
-      case "": return views.home();
-      case "shop": return views.shop(query);
-      case "passport": return views.passport(state);
-      case "studio": return views.studio(state, query);
-      case "cart": return views.cart(state);
-      case "trial-box": return views.trialBox(state);
-      case "orders": return views.orders(state);
-      case "trials": return views.trials(state);
-      case "privacy": return views.privacy();
-      default: return missing();
-    }
-  }
-
-  function updateShell(state, route = getRoute()) {
-    const itemCount = state.cart.reduce((count, line) => count + line.quantity, 0);
-    const badge = document.querySelector("#cart-count");
-    badge.textContent = itemCount;
-    badge.hidden = itemCount === 0;
-    badge.closest("a").setAttribute("aria-label", "ตะกร้าสินค้า " + itemCount + " ชิ้น");
-    const section = route.name === "checkout" && route.id !== "purchase"
-      ? (route.id === "trial" ? "trial" : "passport") : sections[route.name];
-    document.querySelectorAll("[data-section]").forEach(link => {
-      if (link.dataset.section === section) link.setAttribute("aria-current", "true");
-      else link.removeAttribute("aria-current");
-    });
-
-    const { corrupt, persistent } = store.info();
-    warning.innerHTML = corrupt
-      ? '<p class="callout warning">เปิดข้อมูลร้านบนอุปกรณ์นี้ไม่ได้ <a href="#/privacy">จัดการข้อมูล</a></p>'
-      : !persistent ? '<p class="callout warning">อุปกรณ์นี้บันทึกข้อมูลไม่ได้ ทำรายการได้จนกว่าจะปิดหรือรีเฟรชหน้า</p>'
-        : "";
-  }
-
-  function render({ newPage = false, focusKey = "" } = {}) {
-    const state = store.read();
-    const route = getRoute();
-    updateShell(state, route);
-    studioViewer?.destroy();
-    studioViewer = null;
-    content.innerHTML = getView(route, state);
-    const tabs = content.querySelector(".category-tabs");
-    if (tabs && tabs.scrollWidth > tabs.clientWidth) {
-      const active = tabs.querySelector("[aria-current]");
-      tabs.scrollLeft = active.offsetLeft - (tabs.clientWidth - active.offsetWidth) / 2;
-    }
-    const stage = content.querySelector("#studio-art");
-    if (stage) {
-      studioViewer = globalThis.Mono.fitModel.mount(stage);
-      updateStudio(content.querySelector('[data-form="profile"]'));
-    }
-    const title = content.querySelector("h1");
-    document.title = route.name && title ? title.textContent.trim() + " · MONO" : "MONO · Clothing for simple living";
-    if (newPage) {
-      window.scrollTo(0, 0);
-      if (route.name === "shop" && route.query.has("search")) {
-        document.querySelector("#catalog-query").focus({ preventScroll: true });
-      } else if (title) {
-        title.tabIndex = -1;
-        title.focus({ preventScroll: true });
-      }
-    } else if (focusKey) {
-      const next = [...content.querySelectorAll("[data-focus]")].find(element => element.dataset.focus === focusKey);
-      next?.focus({ preventScroll: true });
-    }
-  }
-
-  function notify(message, error = false) {
-    clearTimeout(toastTimer);
-    toast.textContent = message;
-    toast.classList.toggle("toast-error", error);
-    toast.classList.add("visible");
-    toastTimer = setTimeout(() => {
-      toast.classList.remove("visible");
-      toast.textContent = "";
-    }, error ? 6500 : 3800);
-  }
-
-  function navigate(hash, replace = false) {
-    if (location.hash === hash) {
-      render({ newPage: true });
-    } else if (replace) {
-      location.replace(hash);
-    } else {
-      location.hash = hash;
-    }
-  }
-
-  async function commit(trigger, action, after) {
-    if (busy) return;
-    busy = true;
-    if (trigger instanceof HTMLButtonElement) trigger.disabled = true;
-    try {
-      const result = await store.dispatch(action);
-      updateShell(store.read());
-      after?.(result);
-    } catch (error) {
-      if (["draft-changed", "credit-unavailable", "active-trial"].includes(error.code) && getRoute().name === "checkout") {
-        render();
-      } else {
-        updateShell(store.read());
-      }
-      notify(error.message, true);
-    } finally {
-      busy = false;
-      if (trigger instanceof HTMLButtonElement && trigger.isConnected) trigger.disabled = false;
-    }
-  }
-
-  function setProductPhoto(form, worn = false) {
-    const product = catalog.findProduct(form.dataset.product);
-    const color = form.elements.color.value;
-    const picture = document.querySelector("#product-image");
-    const source = worn ? "./assets/editorial/linen-on-model.webp" : catalog.productImage(product.id, color);
-    if (picture.getAttribute("src") !== source) picture.src = source;
-    picture.alt = (worn ? "นางแบบสวม" : "") + product.name + " สี" + catalog.colors[color].name;
-    picture.dataset.view = worn ? "worn" : "product";
-    const controls = content.querySelector(".photo-switch");
-    if (controls) {
-      controls.hidden = color !== "oatmeal";
-      controls.querySelectorAll("button").forEach(button => button.setAttribute("aria-pressed", button.dataset.view === picture.dataset.view));
-    }
-  }
-
-  function updateProductOptions(form, colorChanged) {
-    const product = catalog.findProduct(form.dataset.product);
-    const color = form.elements.color.value;
-    if (colorChanged) setProductPhoto(form);
-    form.querySelector("[data-color-name]").textContent = catalog.colors[color].name;
-    const links = views.variantLinks(product, color, form.elements.size.value);
-    const studio = form.querySelector(".fit-link");
-    if (studio) studio.href = links.studio;
-    content.querySelector("[data-share-line]").href = links.share;
-    if (location.hash !== links.product) history.replaceState(history.state, "", links.product);
-  }
-
-  function getProfile(data) {
-    return Object.fromEntries(Object.keys(catalog.measurements).map(key => [key, Number(data.get(key))]));
-  }
-
-  function updateStudio(form, variantChanged = false) {
-    const fields = new FormData(form);
-    const profile = getProfile(fields);
-    const product = catalog.findProduct(fields.get("product"));
-    const size = fields.get("size");
-    const color = product.colors.includes(fields.get("color")) ? fields.get("color") : product.colors[0];
-    if (form.dataset.garment !== product.id) {
-      form.querySelector("#studio-colors").innerHTML = views.studioColors(product, color);
-      form.dataset.garment = product.id;
-    }
-    for (const [key, value] of Object.entries(profile)) {
-      form.querySelector("#read-" + key).value = value + " ซม.";
-      const field = form.elements[key];
-      field.style.setProperty("--progress", (value - field.min) / (field.max - field.min) * 100 + "%");
-    }
-    const result = views.studioResult(profile, product, size, color);
-    const verdict = form.querySelector("#fit-result");
-    if (verdict.innerHTML !== result.result) verdict.innerHTML = result.result;
-    const advice = form.querySelector("#studio-recommendation");
-    if (advice.textContent !== result.recommendation) advice.textContent = result.recommendation;
-    form.querySelector("#studio-product").href = result.link;
-    const colorName = catalog.colors[color].name;
-    content.querySelector("#studio-garment").textContent = product.english;
-    content.querySelector("#studio-variant").textContent = colorName + " / " + size;
-    const fallback = content.querySelector(".fitting-fallback");
-    const image = catalog.productImage(product.id, color);
-    if (fallback.getAttribute("src") !== image) fallback.src = image;
-    fallback.alt = product.name + " สี" + colorName;
-    studioViewer?.update(profile, product, size, color);
-    if (variantChanged) {
-      const query = new URLSearchParams({ product: product.id, size, color });
-      history.replaceState(history.state, "", "#/studio?" + query);
-    }
-  }
-
-  function trialChoices(form) {
-    const trial = store.read().trials.find(item => item.id === form.dataset.id);
-    const data = new FormData(form);
-    const values = trial.lines.map((line, index) => data.get("line-" + index));
-    const ready = values.every(value => value === "keep" || value === "return");
-    return { trial, ready, keep: trial.lines.filter((line, index) => values[index] === "keep").map(line => line.lineId) };
-  }
-
-  const submitForms = {
-    filters(form, data) {
-      const query = new URLSearchParams();
-      for (const key of ["category", "color", "q"]) {
-        const value = data.get(key)?.trim();
-        if (value) query.set(key, value);
-      }
-      navigate("#/shop" + (query.size ? "?" + query : ""));
-    },
-    variant(form, data, trigger) {
-      const variantId = catalog.variantId(form.dataset.product, data.get("color"), data.get("size"));
-      const trial = trigger?.value === "trial";
-      const action = trial ? { type: "addTrial", variantId } : { type: "updatePurchase", variantId, delta: 1 };
-      commit(trigger, action, () => {
-        form.querySelector("[data-variant-note]").innerHTML = trial
-          ? 'เพิ่มแล้ว <a href="#/trial-box">เปิดกล่องลอง</a>'
-          : 'เพิ่มแล้ว <a href="#/cart">เปิดตะกร้า</a>';
-        notify(trial ? "เพิ่มลงกล่องลองแล้ว" : "เพิ่มลงตะกร้าแล้ว");
-      });
-    },
-    checkout(form, data, trigger) {
-      const { mode, request, signature } = form.dataset;
-      commit(trigger, {
-        type: "checkout", mode, requestId: request, signature, cafeId: data.get("cafe"), creditId: data.get("credit")
-      }, record => navigate((mode === "trial" ? "#/trials/" : "#/order/") + record.id, true));
-    },
-    profile(form, data, trigger) {
-      commit(trigger, { type: "saveProfile", profile: getProfile(data) }, () => {
-        document.querySelector("#profile-note").textContent = "บันทึกโปรไฟล์บนเบราว์เซอร์นี้แล้ว";
-        document.querySelector("#delete-profile").hidden = false;
-        notify("บันทึกโปรไฟล์แล้ว");
-      });
-    },
-    "trial-decisions"(form, data, trigger) {
-      const { trial, ready, keep } = trialChoices(form);
-      if (!ready) return;
-      commit(trigger, { type: "submitDecisions", trialId: trial.id, keep }, () => render({ newPage: true }));
-    },
-    "trial-issue"(form, data, trigger) {
-      commit(trigger, { type: "reportIssue", trialId: form.dataset.id, issue: data.get("issue") }, () => render({ newPage: true }));
-    }
+  function setReset(open){const b=content.querySelector('[data-action="ask-reset"]'),c=content.querySelector("#reset-controls");c.hidden=!open;b.setAttribute("aria-expanded",open);(open?c.querySelector("button"):b).focus();}
+  const actions={
+    "size-chart"(){const e=content.querySelector("#size-chart");e.open=true;e.querySelector("summary").focus();},
+    "apply-code"(b){previewCode(b.form);},
+    quantity(b){commit(b,{type:"updatePurchase",variantId:b.dataset.variant,delta:Number(b.dataset.delta)},()=>render({focusKey:b.dataset.focus}));},
+    "remove-purchase"(b){commit(b,{type:"removePurchase",variantId:b.dataset.variant},()=>render());},
+    "sample-profile"(b){for(const [k,v] of Object.entries(catalog.sampleProfile))b.form.elements[k].value=v;updateStudio(b.form);notify("กำลังใช้สัดส่วนตัวอย่าง");},
+    "clear-profile"(b){commit(b,{type:"clearProfile"},()=>{for(const [k,v] of Object.entries(catalog.sampleProfile))b.form.elements[k].value=v;updateStudio(b.form);content.querySelector("#profile-note").textContent="ลบสัดส่วนที่บันทึกแล้ว กำลังใช้ค่าตัวอย่าง";b.form.querySelector('[data-action="sample-profile"]').focus();b.hidden=true;});},
+    "receive-order"(b){commit(b,{type:"receiveOrder",orderId:b.dataset.id},()=>render());},
+    "save-favorite"(b){commit(b,{type:"saveFavorite",orderId:b.dataset.id,lineId:b.dataset.line},()=>{render();notify("บันทึกเสื้อตัวที่ใส่พอดีแล้ว");});},
+    "ask-reset":()=>setReset(true),"cancel-reset":()=>setReset(false),reset(b){commit(b,{type:"reset"},()=>{try{sessionStorage.removeItem("mono.visit");}catch{}navigate("#/");notify("ล้างข้อมูลร้านบนอุปกรณ์แล้ว");});}
   };
-
-  function setReset(open) {
-    const button = document.querySelector('[data-action="ask-reset"]');
-    const controls = document.querySelector("#reset-controls");
-    controls.hidden = !open;
-    button.setAttribute("aria-expanded", open);
-    (open ? controls.querySelector("button") : button).focus();
+  function copyTracking(from,to){for(const k of ["utm_source","utm_placement"])if(from.has(k))to.set(k,from.get(k));}
+  function captureSource(initial=false){
+    const q=getRoute().query;let a;
+    if(q.has("utm_source"))a=rules.attribution({channel:q.get("utm_source"),placement:q.get("utm_placement")});
+    else if(initial){try{a=JSON.parse(sessionStorage.getItem("mono.visit"));}catch{}a=rules.attribution(a);}
+    if(a){visitAttribution=a;try{sessionStorage.setItem("mono.visit",JSON.stringify(a));}catch{}}
+    return Promise.resolve();
   }
-
-  function trialClick(trigger) {
-    commit(trigger, { type: trigger.dataset.action, trialId: trigger.dataset.id }, () => render({ newPage: true }));
-  }
-
-  const actions = {
-    "product-photo"(trigger) {
-      setProductPhoto(content.querySelector('[data-form="variant"]'), trigger.dataset.view === "worn");
-    },
-    "card-color"(trigger) {
-      const card = trigger.closest(".product-card");
-      const product = catalog.findProduct(card.dataset.product);
-      const color = trigger.dataset.color;
-      card.querySelector("img").src = catalog.productImage(product.id, color);
-      card.querySelector("img").alt = product.name + " สี" + catalog.colors[color].name;
-      card.querySelectorAll("a").forEach(link => { link.href = "#/product/" + product.id + "?color=" + color; });
-      card.querySelectorAll("[data-color]").forEach(button => button.setAttribute("aria-pressed", button === trigger));
-    },
-    "size-chart"() {
-      const chart = document.querySelector("#size-chart");
-      chart.open = true;
-      chart.querySelector("summary").focus();
-    },
-    quantity(trigger) {
-      commit(trigger, {
-        type: "updatePurchase", variantId: trigger.dataset.variant, delta: Number(trigger.dataset.delta)
-      }, () => render({ focusKey: trigger.dataset.focus }));
-    },
-    "remove-purchase"(trigger) {
-      commit(trigger, { type: "removePurchase", variantId: trigger.dataset.variant }, () => {
-        render();
-        notify("นำสินค้าออกจากตะกร้าแล้ว");
-      });
-    },
-    "remove-trial"(trigger) {
-      commit(trigger, { type: "removeTrial", lineId: trigger.dataset.line }, () => {
-        render();
-        notify("นำสินค้าออกจากกล่องลองแล้ว");
-      });
-    },
-    "sample-profile"(trigger) {
-      for (const [key, value] of Object.entries(catalog.sampleProfile)) trigger.form.elements[key].value = value;
-      updateStudio(trigger.form);
-      notify("กำลังใช้สัดส่วนตัวอย่าง");
-    },
-    "clear-profile"(trigger) {
-      commit(trigger, { type: "clearProfile" }, () => {
-        for (const [key, value] of Object.entries(catalog.sampleProfile)) trigger.form.elements[key].value = value;
-        updateStudio(trigger.form);
-        document.querySelector("#profile-note").textContent = "เมื่อกดบันทึก สัดส่วนจะอยู่ในเบราว์เซอร์นี้";
-        trigger.form.querySelector('[data-action="sample-profile"]').focus({ preventScroll: true });
-        trigger.hidden = true;
-        notify("ลบโปรไฟล์แล้ว");
-      });
-    },
-    "ask-reset": () => setReset(true),
-    "cancel-reset": () => setReset(false),
-    reset(trigger) {
-      commit(trigger, { type: "reset" }, () => {
-        navigate("#/");
-        notify("ล้างข้อมูลร้านบนอุปกรณ์แล้ว");
-      });
-    },
-    receiveTrial: trialClick,
-    completeReturn: trialClick,
-    expireDemo: trialClick
-  };
-
-  document.querySelector(".skip-link").addEventListener("click", event => {
-    event.preventDefault();
-    content.focus();
+  document.querySelector(".skip-link").addEventListener("click",e=>{e.preventDefault();content.focus();});
+  const header=document.querySelector(".site-header"),menu=header.querySelector(".menu-toggle");
+  function setMenu(open){header.classList.toggle("nav-open",open);menu.setAttribute("aria-expanded",open);menu.setAttribute("aria-label",open?"ปิดเมนู":"เปิดเมนู");menu.querySelector('[data-icon="menu"]').hidden=open;menu.querySelector('[data-icon="x"]').hidden=!open;}
+  menu.addEventListener("click",e=>{const open=menu.getAttribute("aria-expanded")!=="true";setMenu(open);if(open&&!e.detail)header.querySelector("nav a").focus();});
+  header.addEventListener("click",e=>{if(e.target.closest("a"))setMenu(false);});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&menu.getAttribute("aria-expanded")==="true"){setMenu(false);menu.focus();}});
+  document.addEventListener("click",e=>{if(header.classList.contains("nav-open")&&!header.contains(e.target))setMenu(false);});
+  matchMedia("(max-width: 760px)").addEventListener("change",()=>setMenu(false));
+  warning.addEventListener("click",e=>{if(e.target.closest("[data-dismiss-migration]"))commit(null,{type:"dismissMigration"},()=>updateShell(store.read()));});
+  content.addEventListener("click",e=>{const b=e.target.closest("[data-action]");if(b&&Object.hasOwn(actions,b.dataset.action))actions[b.dataset.action](b);});
+  content.addEventListener("submit",e=>{const form=e.target;if(!Object.hasOwn(submits,form.dataset.form))return;e.preventDefault();submits[form.dataset.form](form,new FormData(form),e.submitter);});
+  content.addEventListener("input",e=>{
+    const input=e.target,form=input.form;
+    if(form?.dataset.form==="profile"&&input.type==="range")updateStudio(form);
+    if(form?.dataset.form==="checkout"&&input.name==="credit"){content.querySelector("#checkout-balance").innerHTML=views.purchaseBalance(rules.quotePurchase(snapshotLines(store.read().cart),[],null));content.querySelector("#code-feedback").textContent="กดตรวจโค้ดเพื่อดูยอดหลังส่วนลด";}
   });
-
-  const header = document.querySelector(".site-header");
-  const menu = header.querySelector(".menu-toggle");
-  function setMenu(open) {
-    header.classList.toggle("nav-open", open);
-    menu.setAttribute("aria-expanded", open);
-    menu.setAttribute("aria-label", open ? "ปิดเมนู" : "เปิดเมนู");
-    menu.querySelector('[data-icon="menu"]').hidden = open;
-    menu.querySelector('[data-icon="x"]').hidden = !open;
-  }
-  menu.addEventListener("click", event => {
-    const open = menu.getAttribute("aria-expanded") !== "true";
-    setMenu(open);
-    if (open && !event.detail) header.querySelector("nav a").focus();
+  content.addEventListener("change",e=>{
+    const input=e.target,form=input.form;
+    if(form?.dataset.form==="variant")updateProductOptions(form);
+    if(form?.dataset.form==="profile"&&input.type!=="range")updateStudio(form,true);
+    if(input.name==="followUp")commit(null,{type:"setFollowUp",enabled:input.checked},()=>render());
   });
-  header.addEventListener("click", event => {
-    const link = event.target.closest("a");
-    if (!link) return;
-    setMenu(false);
-    if (link.hash === location.hash && link.hash === "#/shop?search=1") document.querySelector("#catalog-query")?.focus();
-  });
-  document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && menu.getAttribute("aria-expanded") === "true") {
-      setMenu(false);
-      menu.focus();
-    }
-  });
-  document.addEventListener("click", event => {
-    if (header.classList.contains("nav-open") && !header.contains(event.target)) setMenu(false);
-  });
-  matchMedia("(max-width: 760px)").addEventListener("change", () => setMenu(false));
-
-  content.addEventListener("click", event => {
-    const trigger = event.target.closest("[data-action]");
-    if (!trigger || !Object.hasOwn(actions, trigger.dataset.action)) return;
-    event.preventDefault();
-    actions[trigger.dataset.action](trigger);
-  });
-
-  content.addEventListener("submit", event => {
-    const form = event.target;
-    if (!Object.hasOwn(submitForms, form.dataset.form)) return;
-    event.preventDefault();
-    submitForms[form.dataset.form](form, new FormData(form), event.submitter);
-  });
-
-  content.addEventListener("input", event => {
-    if (event.target.type === "range" && event.target.form?.dataset.form === "profile") updateStudio(event.target.form);
-  });
-
-  content.addEventListener("change", event => {
-    const input = event.target;
-    const form = input.form;
-    if (form?.dataset.form === "variant") updateProductOptions(form, input.name === "color");
-    if (form?.dataset.form === "profile" && input.type !== "range") updateStudio(form, true);
-    if (form?.dataset.form === "checkout" && input.name === "credit") {
-      const state = store.read();
-      const quote = rules.quotePurchase(snapshotLines(state.cart), state.credits, input.checked ? input.value : null);
-      document.querySelector("#checkout-balance").innerHTML = views.purchaseBalance(quote);
-    }
-    if (form?.dataset.form === "trial-decisions") {
-      const { trial, keep, ready } = trialChoices(form);
-      if (ready) document.querySelector("#trial-preview").innerHTML =
-        "<strong>ยอดประมาณการ</strong>" + views.settlementRows(rules.quoteSettlement(trial.lines, trial.depositSatang, keep));
-    }
-  });
-
-  content.addEventListener("error", event => {
-    if (event.target instanceof HTMLImageElement && !event.target.dataset.fallback) {
-      event.target.dataset.fallback = "true";
-      event.target.src = "./assets/mark.svg";
-    }
-  }, true);
-
-  window.addEventListener("hashchange", () => {
-    setMenu(false);
-    render({ newPage: true });
-  });
-  window.addEventListener("pageshow", event => {
-    if (event.persisted) {
-      store.refresh();
-      render();
-    }
-  });
-  window.addEventListener("storage", event => {
-    if (event.key !== STORAGE_KEY && event.key !== null) return;
-    const previousProfile = studioViewer && store.read().profile;
-    store.refresh();
-    if (studioViewer && event.newValue !== null) {
-      const state = store.read();
-      const sameProfile = Object.keys(catalog.measurements).every(key => previousProfile?.[key] === state.profile?.[key]);
-      if (sameProfile) {
-        updateShell(state);
-        return;
-      }
-    }
-    render();
-  });
-
-  setInterval(() => {
-    const clock = document.querySelector("#trial-clock");
-    if (!clock) return;
-    const deadline = Number(clock.dataset.deadline);
-    const now = Date.now();
-    clock.textContent = views.remaining({ expiresAt: deadline }, now);
-    if (now >= deadline) {
-      document.querySelector("#tracker-status").textContent = "เลยกำหนด";
-      const simulate = document.querySelector('[data-action="expireDemo"]');
-      if (simulate) simulate.hidden = true;
-    }
-  }, 1000);
-
-  render();
+  content.addEventListener("error",e=>{if(e.target instanceof HTMLImageElement&&!e.target.dataset.fallback){e.target.dataset.fallback="true";e.target.src="./assets/mark.svg";}},true);
+  window.addEventListener("hashchange",async()=>{setMenu(false);await captureSource();render({newPage:true});});
+  window.addEventListener("pageshow",e=>{if(e.persisted){store.refresh();render();}});
+  window.addEventListener("storage",e=>{if(![STORAGE_KEY,LEGACY_KEY,null].includes(e.key))return;const previous=studioViewer&&store.read().profile;store.refresh();if(studioViewer&&e.newValue!==null&&JSON.stringify(previous)===JSON.stringify(store.read().profile))updateShell(store.read());else render();});
+  captureSource(true).then(()=>render());
 })();

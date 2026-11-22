@@ -215,7 +215,7 @@
   }
   function clothe(mesh, pose, profile, product, row, color, skin) {
     const { shoulder, half, wrist, elbow, reach } = pose;
-    const shirt = product.category === "shirt", kind = shirt ? 2 : 1;
+    const shirt = product.category === "shirt", polo = product.category === "polo", collared = shirt || polo, kind = collared ? 2 : 1;
     const cloth = surface(catalog.colors[color].hex, kind);
     const binding = surface(catalog.colors[color].hex, kind, .945), thread = surface(catalog.colors[color].hex, kind, .83);
     const room = clamp(row.circumference - profile.chest, -15, 36);
@@ -226,7 +226,7 @@
     const waistDepth = profile.waist * .088 + depth * .4 + allowance * .03;
     const hem = shoulder + 2 - row.length * .87;
     const collarY = shoulder + 4.7;
-    const collarW = shirt ? 6.25 : 6.85, collarD = shirt ? 6.45 : 7.4;
+    const collarW = collared ? 6.25 : 6.85, collarD = collared ? 6.45 : 7.4;
     const shape = [[0, max(chest * .89, waist) + 1.1, max(depth * .81, waistDepth) + .35, .0],
       [.19, max(chest * .87, waist) + .45, max(depth * .8, waistDepth) + .25, .05],
       [.40, max(chest * .875, waist - .6), max(depth * .85, waistDepth - .3), -.1], [.61, chest * .97, depth * .97, -.13],
@@ -334,10 +334,10 @@
     const opening = a => point(1, a);
     mesh.rings(steps(5, i => circle(n, a => {
       const v = i / 4, p = opening(a);
-      return [p[0] * (1 - .19 * v), p[1] + (shirt ? 2.05 : 1.25) * v + .18 * sin(v * PI), -.18 + (p[2] + .18) * (1 - .17 * v)];
+      return [p[0] * (1 - .19 * v), p[1] + (collared ? 2.05 : 1.25) * v + .18 * sin(v * PI), -.18 + (p[2] + .18) * (1 - .17 * v)];
     })), binding);
     tube(mesh, circle(n, opening), .13, binding, true);
-    if (!shirt) return;
+    if (!collared) return;
 
     function front(t, x, raise) {
       let lo = -1.39, hi = 1.39;
@@ -349,12 +349,13 @@
       const p = point(t, (lo + hi) * .5, dims);
       return [p[0], p[1], p[2] + raise];
     }
-    mesh.patch(steps(42, i => [-1.08, -.87, .85, 1.07].map(x => front(i / 41, x, abs(x) > 1 ? .14 : .32))), binding);
+    mesh.patch(steps(42, i => [-1.08, -.87, .85, 1.07].map(x => front(polo ? mix(.77, 1, i / 41) : i / 41, x, abs(x) > 1 ? .14 : .32))), binding);
     const buttons = surface("#d9d1bd");
-    for (let i = 0; i < 6; i++) {
-      const p = front(.09 + .148 * i, 0, .44);
+    for (let i = 0; i < (polo ? 2 : 6); i++) {
+      const p = front(polo ? .81 + .08 * i : .09 + .148 * i, 0, .44);
       ellipsoid(mesh, p, [.46, .46, .17], buttons, 14);
     }
+    if (shirt) {
     const pocket = steps(9, i => steps(11, j => {
       const u = j / 10, t = mix(.562 - .027 * (1 - abs(2 * u - 1)), .735, i / 8);
       return front(t, chest * (.27 + .47 * u), .19 + .13 * sin(u * PI));
@@ -362,6 +363,7 @@
     mesh.patch(pocket, cloth);
     tube(mesh, [...pocket.map(row => row[0]).reverse(), ...pocket[0].slice(1), ...pocket.slice(1).map(row => row.at(-1))], .105, binding);
     tube(mesh, pocket.at(-1), .145, binding);
+    }
     for (const side of [-1, 1]) {
       const flap = steps(8, i => steps(43, j => {
         const v = i / 7, a = side * mix(.045, PI, j / 42), c = cos(a), s = sin(a);

@@ -15,6 +15,8 @@
         : `ถ้าชอบทรงพอดี แนะนำไซซ์ ${recommended.size} · เผื่อรอบอก ${recommended.ease} ซม.`;
     const selectedColor = product.colors.includes(color) ? color : product.colors[0];
     const query = new URLSearchParams({ size, color: selectedColor });
+    const current = new URLSearchParams(location.hash.split("?")[1] ?? "");
+    for (const key of ["utm_source", "utm_placement"]) if (current.has(key)) query.set(key, current.get(key));
     return {
       result: `<h3>ไซซ์ ${size} · ${fitNames[fit]}</h3><p>${room} <span>(เสื้อ ${row.circumference} / หุ่น ${profile.chest} ซม.)</span></p>`,
       recommendation: advice,
@@ -38,7 +40,7 @@
     const color = product.colors.includes(query.get("color")) ? query.get("color") : product.colors[0];
     const initial = studioResult(profile, product, size, color);
     return `<div class="wrap page fitting-page">
-      ${pageTitle("ห้องลองเสื้อ", "เลือกเสื้อ ปรับหุ่นตามสัดส่วนของคุณ แล้วเทียบทรงก่อนเลือกไซซ์", "Fit-Twin Studio")}
+      ${pageTitle("ห้องลองเสื้อ", "เลือกเสื้อยืดหรือโปโล ปรับหุ่นแล้วเทียบไซซ์ ภาพและขนาดเป็นค่าตัวอย่างสำหรับสาธิต", "Fit-Twin Studio")}
       <div class="fitting-layout">
         <figure id="studio-art" class="fitting-stage" aria-label="หุ่นลองเสื้อ">
           <div class="fitting-stage-label"><div><span id="studio-garment">${product.english}</span>
@@ -87,6 +89,7 @@
           </section>
         </form>
       </div>
+      <section class="panel studio-chart"><h2>เทียบเสื้อตัวโปรดกับตาราง</h2>${views.measureGuide()}<div id="studio-size-table">${views.sizeTable(product)}</div></section>
     </div>`;
   }
 

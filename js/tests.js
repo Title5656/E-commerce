@@ -1,264 +1,57 @@
 (() => {
-  const Mono = globalThis.Mono ??= {};
-  const tests = [];
-  const test = (id, name, expected, fn) => tests.push({ id, name, expected, fn });
-
-  function same(left, right) {
-    return JSON.stringify(left) === JSON.stringify(right);
-  }
-
-  const fixtureLines = [
-    { lineId: "a", unitSatang: 39000, quantity: 1 },
-    { lineId: "b", unitSatang: 49000, quantity: 1 },
-    { lineId: "c", unitSatang: 59000, quantity: 1 }
-  ];
-  const availableCredit = { id: "FP-001", issuedBy: "ORD-001", usedBy: null };
-  const defaultVariant = "tee-heavy~chalk~M";
-  const edgeVariant = "shorts-twill~oatmeal~M";
-
-  function memoryStorage(initial = {}) {
-    const data = new Map(Object.entries(initial));
-    return {
-      getItem: key => data.get(key) ?? null,
-      setItem: (key, value) => data.set(key, value),
-      removeItem: key => data.delete(key)
-    };
-  }
-
-  function createDemoStore(overrides = {}) {
-    let id = 0;
-    return Mono.createStore({
-      storage: memoryStorage(),
-      getNow: () => 1800000000000,
-      makeId: () => "test-" + ++id,
-      ...overrides
-    });
-  }
-
-  function checkout(store, mode, requestId, extra = {}) {
-    return store.dispatch({
-      type: "checkout", mode, requestId,
-      signature: Mono.rules.checkoutSignature(store.read(), mode),
-      ...extra
-    });
-  }
-
-  async function openTrial(store) {
-    for (const variantId of [defaultVariant, "polo-pique~olive~M", "shirt-linen~oatmeal~M"]) {
-      await store.dispatch({ type: "addTrial", variantId });
-    }
-    return checkout(store, "trial", "box", { cafeId: "ari" });
-  }
-
-  async function rejectionMessage(action) {
-    try {
-      await action();
-    } catch (error) {
-      return error.code ?? error.message;
-    }
-    return "ข้อมูลถูกยอมรับ";
-  }
-
-  test("CAT01", "แค็ตตาล็อกมีข้อมูลผ้าครบและ variant ตรงกับราคา", [6, 6, 49900], () => {
-    const { products, fabrics, resolveVariant } = Mono.catalog;
-    return [products.length, fabrics.length, resolveVariant(edgeVariant).unitSatang];
-  });
-  test("CAT02", "สีที่ไม่มีขายใช้สร้างรายการไม่ได้", null,
-    () => Mono.catalog.resolveVariant("tee-heavy~olive~M"));
-
-  for (const [id, subtotal, expected] of [
-    ["C01", 49800, [49800, 0]],
-    ["C02", 49900, [40000, 9900]]
-  ]) {
-    test(id, "ยอดซื้อก่อนใช้เครดิต " + subtotal / 100 + " บาท", expected, () => {
-      const quote = Mono.rules.quotePurchase(
-        [{ unitSatang: subtotal, quantity: 1 }], [availableCredit], availableCredit.id
-      );
-      return [quote.dueSatang, quote.creditSatang];
-    });
-  }
-
-  test("C03", "เครดิตที่ใช้แล้วไม่ลดราคาอีก", 49900,
-    () => Mono.rules.quotePurchase(
-      [{ unitSatang: 49900, quantity: 1 }],
-      [{ ...availableCredit, usedBy: "ORD-002" }], availableCredit.id
-    ).dueSatang);
-
-  test("C04", "ได้เครดิตเมื่อซื้อสมุด ตัดเครดิตเมื่อยืนยันเสื้อผ้าเท่านั้น", [9900, null, 40000, true], async () => {
-    const store = createDemoStore();
-    const passport = await checkout(store, "passport", "passport-1");
-    await store.dispatch({ type: "updatePurchase", variantId: edgeVariant, delta: 1 });
-    const credit = store.read().credits[0];
-    const changed = await checkout(store, "purchase", "purchase-1", { creditId: credit.id });
-    return [passport.dueSatang, credit.usedBy, changed.dueSatang, store.read().credits[0].usedBy === changed.id];
-  });
-
-  for (const [id, difference, expected] of [
-    ["F01", 5, "tight"], ["F02", 6, "regular"], ["F03", 14, "regular"], ["F04", 15, "oversized"]
-  ]) {
-    test(id, "ระยะเผื่อ " + difference + " ซม.", expected,
-      () => Mono.rules.classifyFit(96, 96 + difference).fit);
-  }
-  test("F05", "อก 96 กับเสื้อคอตตอนหนาแนะนำ M", ["M", 10], () => {
-    const product = Mono.catalog.findProduct("tee-heavy");
-    const recommendation = Mono.rules.recommendSize({ chest: 96 }, product.chart);
-    return [recommendation.size, recommendation.ease];
-  });
-  test("F06", "ไม่มีไซส์ Regular และกรณีเสมอกันเลือกไซส์เล็กกว่า", [null, "S"], () => [
-    Mono.rules.recommendSize({ chest: 125 }, Mono.catalog.findProduct("tee-heavy").chart),
-    Mono.rules.recommendSize({ chest: 90 }, [{ size: "S", circumference: 98 }, { size: "M", circumference: 102 }]).size
-  ]);
-
-  test("MC01", "สามชิ้น 390 + 490 + 590 บาท", [147000, 59000, 88000], () => {
-    const quote = Mono.rules.quoteTrial(fixtureLines);
-    return [quote.totalSatang, quote.depositSatang, quote.exposureSatang];
-  });
-  for (const [id, picks, expected] of [
-    ["MC02", [], [0, 59000]],
-    ["MC03", ["b"], [0, 10000]],
-    ["MC04", ["c"], [0, 0]],
-    ["MC05", ["a", "b"], [29000, 0]],
-    ["MC06", ["a", "b", "c"], [88000, 0]]
-  ]) {
-    test(id, "ปิดยอดกล่องเมื่อเก็บ " + (picks.join(", ") || "0 ชิ้น"), expected, () => {
-      const quote = Mono.rules.quoteSettlement(fixtureLines, 59000, picks);
-      return [quote.paySatang, quote.refundSatang];
-    });
-  }
-  test("MC07", "กล่องรองรับสองไซส์ของรุ่นเดียวกันและปฏิเสธชิ้นที่สี่", ["trial-full", 3], async () => {
-    const store = createDemoStore();
-    for (const variantId of [defaultVariant, "tee-heavy~chalk~L", "polo-pique~olive~M"]) {
-      await store.dispatch({ type: "addTrial", variantId });
-    }
-    const result = await rejectionMessage(() => store.dispatch({ type: "addTrial", variantId: edgeVariant }));
-    return [result, store.read().trialCart.length];
-  });
-  test("MC08", "เริ่ม 72 ชั่วโมงเมื่อรับของและเลยกำหนดยังขอคืนได้", [null, false, true, "awaiting_return"], async () => {
-    let now = 1800000000000;
-    const store = createDemoStore({ getNow: () => now });
-    const trial = await openTrial(store);
-    const received = await store.dispatch({ type: "receiveTrial", trialId: trial.id });
-    const before = Mono.rules.isExpired(received, now + 72 * 3600000 - 1);
-    now += 72 * 3600000;
-    const after = Mono.rules.isExpired(received, now);
-    const returned = await store.dispatch({ type: "submitDecisions", trialId: trial.id, keep: [] });
-    return [trial.expiresAt, before, after, returned.status];
-  });
-  test("MC09", "รอตรวจรับแล้วปิดยอดครั้งเดียวและคืน 100 บาท", ["awaiting_return", null, 10000, true], async () => {
-    const store = createDemoStore();
-    const trial = await openTrial(store);
-    await store.dispatch({ type: "receiveTrial", trialId: trial.id });
-    const pending = await store.dispatch({ type: "submitDecisions", trialId: trial.id, keep: [trial.lines[1].lineId] });
-    const command = { type: "completeReturn", trialId: trial.id };
-    const settled = await store.dispatch(command);
-    const again = await store.dispatch(command);
-    return [pending.status, pending.settlement, settled.settlement.refundSatang, same(settled.settlement, again.settlement)];
-  });
-  test("MC10", "ของเสียหายเข้าตรวจสอบ การจ่ายและคืนเงินพักไว้", ["review", "trial-status", null], async () => {
-    const store = createDemoStore();
-    const trial = await openTrial(store);
-    await store.dispatch({ type: "receiveTrial", trialId: trial.id });
-    await store.dispatch({ type: "submitDecisions", trialId: trial.id, keep: [] });
-    const review = await store.dispatch({ type: "reportIssue", trialId: trial.id, issue: "damage" });
-    const result = await rejectionMessage(() => store.dispatch({ type: "completeReturn", trialId: trial.id }));
-    return [review.status, result, store.read().trials[0].settlement];
-  });
-  test("MC11", "เก็บทั้งกล่องปิดยอดทันทีและเปิดกล่องใหม่ได้", ["settled", 88000, 1], async () => {
-    const store = createDemoStore();
-    const trial = await openTrial(store);
-    await store.dispatch({ type: "receiveTrial", trialId: trial.id });
-    const settled = await store.dispatch({ type: "submitDecisions", trialId: trial.id, keep: trial.lines.map(line => line.lineId) });
-    const draft = await store.dispatch({ type: "addTrial", variantId: edgeVariant });
-    return [settled.status, settled.settlement.paySatang, draft.length];
-  });
-  test("MC12", "ออกรหัสคืน MONO และเปิดหลักฐานคืนที่ออกก่อนเปลี่ยนชื่อร้านได้", ["MONO-TR-001", "WRN-TR-001"], async () => {
-    const storage = memoryStorage();
-    const store = createDemoStore({ storage });
-    const trial = await openTrial(store);
-    await store.dispatch({ type: "receiveTrial", trialId: trial.id });
-    const returned = await store.dispatch({ type: "submitDecisions", trialId: trial.id, keep: [] });
-    const existing = JSON.parse(storage.getItem(Mono.STORAGE_KEY));
-    existing.trials[0].returnCode = "WRN-" + trial.id;
-    storage.setItem(Mono.STORAGE_KEY, JSON.stringify(existing));
-    return [returned.returnCode, createDemoStore({ storage }).read().trials[0].returnCode];
-  });
-  test("O01", "กดยืนยันซื้อซ้ำและเปิดร้านใหม่ยังเจอออเดอร์เดิม", [39000, true, 1], async () => {
-    const storage = memoryStorage();
-    const store = createDemoStore({ storage });
-    await store.dispatch({ type: "updatePurchase", variantId: defaultVariant, delta: 1 });
-    const first = await checkout(store, "purchase", "same-click");
-    const again = await checkout(store, "purchase", "same-click");
-    return [first.dueSatang, first.id === again.id, createDemoStore({ storage }).read().orders.length];
-  });
-  test("O02", "ตะกร้าเปลี่ยนระหว่างยืนยันไม่คิดยอดเก่า", "draft-changed", async () => {
-    const store = createDemoStore();
-    await store.dispatch({ type: "updatePurchase", variantId: defaultVariant, delta: 1 });
-    const signature = Mono.rules.checkoutSignature(store.read(), "purchase");
-    await store.dispatch({ type: "updatePurchase", variantId: edgeVariant, delta: 1 });
-    return rejectionMessage(() => checkout(store, "purchase", "changed", { signature }));
-  });
-  test("O03", "คำสั่งจากสองหน้าอ่านเครดิตล่าสุดก่อนเขียน", ["credit-unavailable", 2], async () => {
-    const storage = memoryStorage();
-    const first = createDemoStore({ storage });
-    await checkout(first, "passport", "passport-cross-tab");
-    const credit = first.read().credits[0];
-    await first.dispatch({ type: "updatePurchase", variantId: edgeVariant, delta: 1 });
-    const second = createDemoStore({ storage });
-    await checkout(first, "purchase", "consume", { creditId: credit.id });
-    await first.dispatch({ type: "updatePurchase", variantId: edgeVariant, delta: 1 });
-    const result = await rejectionMessage(() => checkout(second, "purchase", "stale-credit", { creditId: credit.id }));
-    return [result, first.read().orders.length];
-  });
-  test("S01", "ลบโปรไฟล์อย่างเดียวโดยคงออเดอร์", [null, 1], async () => {
-    const store = createDemoStore();
-    await checkout(store, "passport", "book");
-    await store.dispatch({ type: "saveProfile", profile: Mono.catalog.sampleProfile });
-    await store.dispatch({ type: "clearProfile" });
-    return [store.read().profile, store.read().orders.length];
-  });
-  test("S02", "ข้อมูลเสียมีสถานะแจ้งและรีเซ็ตเฉพาะ key ร้าน", [true, false, "other"], async () => {
-    const storage = memoryStorage({ [Mono.STORAGE_KEY]: "{", external: "other" });
-    const store = createDemoStore({ storage });
-    const before = store.info().corrupt;
-    await store.dispatch({ type: "reset" });
-    return [before, store.info().corrupt, storage.getItem("external")];
-  });
-  test("S03", "storage ใช้ไม่ได้ยังซื้อสมุดในหน่วยความจำได้", [false, 1], async () => {
-    const store = createDemoStore({ storage: null });
-    await checkout(store, "passport", "memory");
-    return [store.info().persistent, store.read().orders.length];
-  });
-
-  Mono.runTests = async () => {
-    const results = [];
-    for (const { id, name, expected, fn } of tests) {
-      let actual;
-      let passed = false;
-      try {
-        actual = await fn();
-        passed = same(actual, expected);
-      } catch (error) {
-        actual = error.message;
-      }
-      results.push({ id, name, expected, actual, passed });
-    }
-    return results;
-  };
-
-  if (typeof document !== "undefined") {
-    Mono.runTests().then(results => {
-      const failed = results.filter(result => !result.passed).length;
-      const summary = document.querySelector("#test-summary");
-      summary.dataset.total = results.length;
-      summary.dataset.failed = failed;
-      summary.textContent = "ผ่าน " + (results.length - failed) + " จาก " + results.length + " · ตก " + failed;
-      for (const result of results) {
-        const row = document.createElement("li");
-        row.className = result.passed ? "test-pass" : "test-fail";
-        row.textContent = (result.passed ? "ผ่าน " : "ตก ") + result.id + " · " + result.name +
-          " | คาด " + JSON.stringify(result.expected) + " | ได้ " + JSON.stringify(result.actual);
-        document.querySelector("#test-results").append(row);
-      }
-    });
-  }
+  const M=globalThis.Mono, tests=[], now=1800000000000, day=86400000, variant='tee-cvc32~white~M';
+  const test=(id,name,expected,fn)=>tests.push({id,name,expected,fn});
+  const memory=(initial={})=>{const data=new Map(Object.entries(initial)); return {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};};
+  const store=(extra={})=>M.createStore({storage:memory(),getNow:()=>now,...extra});
+  const buy=(s,mode,requestId,extra={})=>s.dispatch({type:'checkout',mode,requestId,signature:M.rules.checkoutSignature(s.read(),mode),...extra});
+  const add=(s,id=variant)=>s.dispatch({type:'updatePurchase',variantId:id,delta:1});
+  const errorOf=async fn=>{try{await fn();return 'accepted';}catch(e){return e.code;}};
+  const credit={id:'KIT-001',issuedBy:'ORD-001',usedBy:null};
+  const legacy=()=>({version:1,cart:[{variantId:'shirt-linen~chalk~M',quantity:1}],trialCart:[],trials:[],profile:M.catalog.sampleProfile,
+    credits:[{id:'FP-001',issuedBy:'OLD-1',usedBy:null}],orders:[
+      {id:'OLD-1',mode:'passport',requestId:'old-kit',createdAt:now-day,lines:[],subtotalSatang:9900,creditSatang:0,dueSatang:9900,creditId:null},
+      {id:'OLD-2',mode:'purchase',requestId:'old-shirt',createdAt:now-day,lines:[{lineId:'old-line',variantId:'shirt-linen~chalk~M',productId:'shirt-linen',name:'เชิ้ตเดิม',color:'chalk',colorName:'ขาวชอล์ก',size:'M',unitSatang:59000,quantity:1}],subtotalSatang:59000,creditSatang:0,dueSatang:59000,creditId:null}]});
+  test('CAT01','ราคาหกรุ่นตาม V6',[35000,35000,39000,39000,49000,49000],()=>M.catalog.products.map(p=>p.unitSatang));
+  for(const [code,id] of [['1','tee-cvc32'],['0','tee-comb32'],['2.1','tee-semi20'],['2.2','tee-comb20'],['20','polo-tk'],['24','polo-tc-micro']]) test('CODE-'+code,'รหัสผ้า '+code+' จับคู่ตรงรุ่น',id,()=>M.catalog.findByFabricCode(code)?.id);
+  test('CAT02','รหัสไม่ตรงไม่จับคู่บางส่วน',[null,null,null],()=>['2','2.10','00'].map(c=>M.catalog.findByFabricCode(c)));
+  test('CAT03','สีและรุ่นเลิกขายใช้สร้างรายการไม่ได้',[null,null],()=>[M.catalog.resolveVariant('tee-cvc32~olive~M'),M.catalog.resolveVariant('shorts-twill~oatmeal~M')]);
+  test('CAT04','ผ้าหกรหัสใช้ข้อมูลเดียวกับเสื้อ',true,()=>M.catalog.fabrics.every(f=>typeof f.code==='string'&&M.catalog.findByFabricCode(f.code)?.fabricId===f.id));
+  for(const [price,due] of [[35000,25100],[39000,29100],[49000,39100]]) test('C-'+price,'โค้ดลด 99 บาทกับเสื้อ '+price/100+' บาทไม่มีขั้นต่ำ',[due,9900],()=>{const q=M.rules.quotePurchase([{unitSatang:price,quantity:1}],[credit],credit.id);return [q.dueSatang,q.creditSatang];});
+  test('C00','ซื้อเสื้อตรงไม่มีโค้ด',35000,async()=>{const s=store();await add(s);return (await buy(s,'purchase','direct')).dueSatang;});
+  test('C01','Kit ออกโค้ดครั้งเดียวและยืนยันซ้ำคืนใบเดิม',[9900,true,1,1],async()=>{const s=store(),a=await buy(s,'kit','k'),b=await buy(s,'kit','k');return [a.dueSatang,a.id===b.id,s.read().credits.length,s.read().orders.length];});
+  test('C02','Kit ไม่รับโค้ดส่วนลด','credit-unavailable',async()=>{const s=store();await buy(s,'kit','k');return errorOf(()=>buy(s,'kit','k2',{creditId:s.read().credits[0].id}));});
+  test('C03','โค้ดผิดไม่ออกใบสั่งซื้อ',['credit-unavailable',0],async()=>{const s=store();await add(s);const e=await errorOf(()=>buy(s,'purchase','x',{creditId:'wrong'}));return [e,s.read().orders.length];});
+  test('C04','เก็บ snapshot และยืนยันซื้อซ้ำคืนใบเดิม',['เสื้อยืดคอกลม CVC 32','M',35000,9900,25100,true],async()=>{const s=store();await buy(s,'kit','k');await add(s);const code=s.read().credits[0].id,a=await buy(s,'purchase','p',{creditId:code}),b=await buy(s,'purchase','p',{creditId:code});return [a.lines[0].name,a.lines[0].size,a.lines[0].unitSatang,a.creditSatang,a.dueSatang,a.id===b.id];});
+  test('C05','อีกแท็บไม่ใช้สิทธิ์ซ้ำ',['credit-unavailable',2],async()=>{const storage=memory(),a=store({storage});await buy(a,'kit','k');await add(a);const b=store({storage}),code=a.read().credits[0].id;await buy(a,'purchase','a',{creditId:code});await add(b);const e=await errorOf(()=>buy(b,'purchase','b',{creditId:code}));return [e,b.read().orders.length];});
+  test('C06','สอง store ยืนยัน request เดียวได้ใบเดียว',[true,1],async()=>{const storage=memory(),a=store({storage}),b=store({storage});const [x,y]=await Promise.all([buy(a,'kit','same'),buy(b,'kit','same')]);b.refresh();return [x.id===y.id,b.read().orders.length];});
+  test('C07','ตะกร้าเปลี่ยนต้องตรวจยอดใหม่','draft-changed',async()=>{const s=store();await add(s);const signature=M.rules.checkoutSignature(s.read(),'purchase');await add(s);return errorOf(()=>s.dispatch({type:'checkout',mode:'purchase',requestId:'stale',signature}));});
+  test('C08','ป้องกันจำนวนเกินเก้าชิ้น','purchase-limit',async()=>{const s=store();for(let i=0;i<9;i++)await add(s);return errorOf(()=>add(s));});
+  test('C09','นำสินค้าออกจากตะกร้าได้',0,async()=>{const s=store();await add(s);await s.dispatch({type:'removePurchase',variantId:variant});return s.read().cart.length;});
+  test('M01','ย้าย snapshot ประวัติและโปรไฟล์โดยไม่ resolve รุ่นเก่า',[2,'เชิ้ตเดิม',59000,96,0,true],()=>{const v=store({storage:memory({'itds294.warin.v1':JSON.stringify(legacy())})}).read();return [v.orders.length,v.orders[1].lines[0].name,v.orders[1].dueSatang,v.profile.chest,v.cart.length,!!v.migrationNotice];});
+  test('M02','เปิดใหม่ไม่ออกสิทธิ์ v1 ซ้ำ',[1,1,2],async()=>{const storage=memory({'itds294.warin.v1':JSON.stringify(legacy())}),a=store({storage});await add(a);const b=store({storage});return [a.read().credits.length,b.read().credits.length,b.read().orders.length];});
+  test('M03','สิทธิ์เดิมที่ใช้แล้วคงสถานะ','OLD-2',()=>{const v=legacy();v.credits[0].usedBy='OLD-2';return store({storage:memory({'itds294.warin.v1':JSON.stringify(v)})}).read().credits[0].usedBy;});
+  test('M04','รีเซ็ตไม่ฟื้น v1 และไม่ลบข้อมูลอื่น',[0,0,'external'],async()=>{const storage=memory({'itds294.warin.v1':JSON.stringify(legacy()),other:'external'}),s=store({storage});await s.dispatch({type:'reset'});const b=store({storage});return [b.read().orders.length,b.read().credits.length,storage.getItem('other')];});
+  test('S01','ข้อมูลเสียแจ้งและไม่เขียนทับก่อนรีเซ็ต',[true,'corrupt-storage',false],async()=>{const s=store({storage:memory({[M.STORAGE_KEY]:'{'})}),c=s.info().corrupt,e=await errorOf(()=>add(s));await s.dispatch({type:'reset'});return [c,e,s.info().corrupt];});
+  test('S02','ไม่มี storage ยังซื้อในหน่วยความจำได้',[false,1],async()=>{const s=store({storage:null});await buy(s,'kit','memory');return [s.info().persistent,s.read().orders.length];});
+  test('S03','บันทึกแล้วลบโปรไฟล์ได้',null,async()=>{const s=store();await s.dispatch({type:'saveProfile',profile:M.catalog.sampleProfile});await s.dispatch({type:'clearProfile'});return s.read().profile;});
+  test('F01','ขอบระยะเผื่อรอบอก',['tight','regular','regular','oversized'],()=>[5,6,14,15].map(n=>M.rules.classifyFit(96,96+n).fit));
+  test('F02','ทั้งหกรุ่นมีหุ่นและตารางไซซ์แนะนำ',true,()=>M.catalog.products.every(p=>p.studio&&M.rules.recommendSize(M.catalog.sampleProfile,p.chart)?.size==='M'));
+  test('F03','คะแนนเสมอเลือกไซซ์เล็ก','S',()=>M.rules.recommendSize({chest:96},[{size:'S',circumference:104},{size:'M',circumference:108}]).size);
+  test('F04','ไม่มีช่วงพอดีไม่รับรองไซซ์',null,()=>M.rules.recommendSize({chest:125},M.catalog.products[0].chart));
+  test('A01','ที่มาลิงก์ไปกับคำสั่งซื้อ',{channel:'tiktok',placement:'public-page'},async()=>{const s=store();await s.dispatch({type:'setAttribution',attribution:{channel:'tiktok',placement:'public-page'}});await add(s);return (await buy(s,'purchase','campaign')).attribution;});
+  test('A02','เข้าตรงเก็บ direct',{channel:'direct',placement:'direct'},async()=>{const s=store();await add(s);return (await buy(s,'purchase','d')).attribution;});
+  test('A06','ที่มาของแท็บส่งซื้อไม่ถูกแท็บอื่นเขียนทับ',{channel:'facebook',placement:'salaya-group'},async()=>{const storage=memory(),a=store({storage}),b=store({storage});await add(a);await b.dispatch({type:'setAttribution',attribution:{channel:'direct',placement:'direct'}});return (await buy(a,'purchase','tab-a',{attribution:{channel:'facebook',placement:'salaya-group'}})).attribution;});
+  test('A07','ไม่เดาแหล่งเผยแพร่ที่ลิงก์ไม่ได้ระบุ',{channel:'facebook',placement:'unspecified'},()=>M.rules.attribution({channel:'facebook'}));
+  test('SNAP','ขนาดตัวพอดีอ่าน snapshot แม้ตารางเปลี่ยน',106,async()=>{const s=store();await add(s);const o=await buy(s,'purchase','size-snapshot');await s.dispatch({type:'receiveOrder',orderId:o.id});const row=M.catalog.products[0].chart[1],original=row.circumference;try{row.circumference=110;await s.dispatch({type:'saveFavorite',orderId:o.id,lineId:o.lines[0].lineId});return s.read().favorite.garmentChest;}finally{row.circumference=original;}});
+  test('A03','รับเสื้อบันทึกวันและกดซ้ำคงวันเดิม',now,async()=>{const s=store();await add(s);const o=await buy(s,'purchase','d');await s.dispatch({type:'receiveOrder',orderId:o.id});await s.dispatch({type:'receiveOrder',orderId:o.id});return s.read().orders[0].deliveredAt;});
+  test('A04','LINE สมัครใจและถอนการติดตามได้',[false,true,false],async()=>{const s=store(),a=s.read().followUp.enabled;await s.dispatch({type:'setFollowUp',enabled:true});const b=s.read().followUp.enabled;await s.dispatch({type:'setFollowUp',enabled:false});return [a,b,s.read().followUp.enabled];});
+  test('A05','บันทึกเสื้อที่ใส่พอดีจากรายการรับแล้ว',['tee-cvc32','M'],async()=>{const s=store();await add(s);const o=await buy(s,'purchase','d');await s.dispatch({type:'receiveOrder',orderId:o.id});await s.dispatch({type:'saveFavorite',orderId:o.id,lineId:o.lines[0].lineId});return [s.read().favorite.productId,s.read().favorite.size];});
+  const garment=(id,customerId,createdAt,deliveredAt,quantity=1)=>({id,customerId,createdAt,deliveredAt,mode:'purchase',lines:[{quantity}],legacy:false});
+  test('K01','แยกใช้โค้ด ซื้อซ้ำ และคนยังไม่ครบช่วง',[1,1,1,1,2],()=>{const orders=[{id:'k',mode:'kit',customerId:'a',createdAt:now-90*day},garment('a1','a',now-80*day,now-70*day,2),garment('b1','b',now-80*day,now-70*day),garment('b2','b',now-20*day,now-19*day),garment('c1','c',now-10*day,now-9*day)],m=M.rules.metrics({orders,credits:[{issuedBy:'k',usedBy:'a1'}]},now);return [m.kitsSold,m.creditsUsed,m.repeatCustomers,m.pendingCustomers,m.matureCustomers];});
+  test('K02','ยังไม่ครบ 60 วันไม่มีตัวหาร',[0,null],()=>{const m=M.rules.metrics({orders:[garment('a','a',now-day,now-day)],credits:[]},now);return [m.matureCustomers,m.repeatRate];});
+  test('K03','หลายชิ้นบิลเดียวไม่ใช่ซื้อซ้ำ',0,()=>M.rules.metrics({orders:[garment('a','a',now-90*day,now-80*day,2)],credits:[]},now).repeatCustomers);
+  test('K04','ซื้อหลัง 60 วันไม่อยู่ในอัตราช่วงนี้',0,()=>M.rules.metrics({orders:[garment('a','a',now-100*day,now-90*day),garment('b','a',now-day,now)],credits:[]},now).repeatCustomers);
+  test('K05','ขอบ 60 วันนับต่อคนและแยกบิล',[1,1],()=>{const m=M.rules.metrics({orders:[garment('a','a',now-61*day,now-60*day),garment('b','a',now,now),garment('c','a',now,now)],credits:[]},now);return [m.matureCustomers,m.repeatCustomers];});
+  M.runTests=async()=>{const out=[];for(const {id,name,expected,fn} of tests){let actual;try{actual=await fn();}catch(e){actual=e.message;}out.push({id,name,expected,actual,passed:JSON.stringify(actual)===JSON.stringify(expected)});}return out;};
+  if(typeof document!=='undefined')M.runTests().then(results=>{const failed=results.filter(r=>!r.passed).length,s=document.querySelector('#test-summary');s.dataset.total=results.length;s.dataset.failed=failed;s.textContent=`ผ่าน ${results.length-failed} จาก ${results.length} · ตก ${failed}`;for(const r of results){const row=document.createElement('li');row.className=r.passed?'test-pass':'test-fail';row.textContent=`${r.passed?'ผ่าน':'ตก'} ${r.id} · ${r.name} | คาด ${JSON.stringify(r.expected)} | ได้ ${JSON.stringify(r.actual)}`;document.querySelector('#test-results').append(row);}});
 })();

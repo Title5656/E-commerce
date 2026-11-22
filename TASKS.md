@@ -1,5 +1,19 @@
 # งานต้นแบบ MONO
 
+## ปรับตามแผนธุรกิจ V6 · 22 พฤศจิกายน 2569
+
+| งาน | สถานะ | ไฟล์และผลที่ตรวจ |
+|---|---|---|
+| V6-01 เสื้อหกรุ่นและเส้นทางร้าน | DONE | `docs/plan/PRODUCT_SPEC.md`, `js/catalog.js`, `js/views/shop.js`, `index.html`, `assets/` ค้นรหัสตรงตัวและซื้อเสื้อตรง ยุติบริการกล่องลอง |
+| V6-02 Kit โค้ดและย้ายข้อมูล | DONE | `docs/plan/ARCHITECTURE.md`, `docs/plan/DECISION_LOG.md`, `js/store.js`, `js/rules.js`, `js/views/checkout.js` ยอด 99/251/291/391 บาท ประวัติเดิมและข้ามแท็บ |
+| V6-03 Fit-Twin หกรุ่น | DONE | `js/fit-model.js`, `js/views/studio.js` คอกลม/คอปก วิธีวัด ตารางตัวอย่างและกลับไซซ์เดิม |
+| V6-04 ที่มาลิงก์และซื้อซ้ำ | DONE | `js/views/retention.js`, `js/app.js`, `js/rules.js` สมัครใจติดตาม รับเสื้อพร้อมวัน และนับต่อคนครบ 60 วัน |
+| V6-05 ตรวจรับรุ่นบนเครื่อง | DONE | `docs/plan/V6_IMPLEMENTATION.md`, `docs/plan/TEST_AND_DEPLOYMENT.md`, `js/tests.js`, `tests.html`, `README.md` ทดสอบ 390/1440 พิกเซลและตรวจโค้ดก่อนพร้อมเผยแพร่ |
+
+## ประวัติงานก่อน V6
+
+สถานะด้านล่างเป็นผลของรุ่นเดิม ไม่ใช่กติกาหรือผลตรวจของ V6
+
 | งาน | สถานะ | ต้องผ่านก่อน | ไฟล์และผลที่ตรวจ |
 |---|---|---|---|
 | P00 ลงสเปก | DONE | แผนที่อนุมัติ | `AGENTS.md`, `docs/plan/` ระบุข้อมูลเดโม หน่วยเงิน route และผลลัพธ์ |

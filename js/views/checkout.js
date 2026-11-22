@@ -1,172 +1,38 @@
 (() => {
-  const Mono = globalThis.Mono;
-  const { views, catalog, rules, snapshotLines } = Mono;
-  const {
-    money, date, escape, icon, breadcrumb, pageTitle, emptyState, priceRows,
-    orderLine, trialBalance, purchaseBalance, paymentNotice, trialLabel
-  } = views;
-
+  const Mono=globalThis.Mono,{views,catalog,rules,snapshotLines}=Mono;
+  const {money,escape,icon,pageTitle,emptyState,orderLine,purchaseBalance,paymentNotice,breadcrumb,date}=views;
   function cart(state) {
-    const lines = snapshotLines(state.cart);
-    const quote = rules.quotePurchase(lines, state.credits);
-    const eligible = rules.eligibleCredit(quote.subtotalSatang, state.credits);
-    return `<div class="wrap page">
-      ${pageTitle("ตะกร้าของคุณ", "", "ซื้อปกติ")}
-      ${lines.length ? `<div class="split-layout">
-        <section class="panel"><h2>สินค้าในตะกร้า</h2><ul class="order-lines">${lines.map(line => {
-          const label = line.name + " " + line.colorName + " ไซซ์ " + line.size;
-          return orderLine(line, `<div class="quantity-row">
-            <button class="step" type="button" data-action="quantity" data-focus="minus-${line.variantId}" data-delta="-1" data-variant="${line.variantId}" aria-label="ลดจำนวน ${label}">${icon("minus")}</button>
-            <span aria-label="จำนวน">${line.quantity}</span>
-            <button class="step" type="button" data-action="quantity" data-focus="plus-${line.variantId}" data-delta="1" data-variant="${line.variantId}" aria-label="เพิ่มจำนวน ${label}" ${line.quantity >= 9 ? "disabled" : ""}>${icon("plus")}</button>
-            <button class="text-button" type="button" data-action="remove-purchase" data-variant="${line.variantId}" aria-label="นำ ${label} ออก">นำออก</button>
-          </div>`);
-        }).join("")}</ul></section>
-        <aside class="panel totals-panel">
-          <h2>สรุปตะกร้า</h2>
-          ${priceRows([["ยอดสินค้า", money(quote.subtotalSatang)], ["ค่าจัดส่ง", money(0)], ["ยอดก่อนใช้เครดิต", money(quote.subtotalSatang), "total"]])}
-          ${eligible ? `<p class="callout">ใช้เครดิตสมุดผ้า ${money(rules.CREDIT_VALUE)} ได้ในหน้าถัดไป</p>` : ""}
-          <a class="button full" href="#/checkout/purchase">ตรวจสอบคำสั่งซื้อ</a>
-          <a class="text-link" href="#/shop">เลือกสินค้าต่อ</a>
-        </aside>
-      </div>` : emptyState("ตะกร้ายังว่าง", "เลือกเสื้อหรือกางเกงที่อยากลองใส่ทุกวัน")}
-    </div>`;
+    const lines=snapshotLines(state.cart),quote=rules.quotePurchase(lines,[],null);
+    return `<div class="wrap page">${pageTitle("ตะกร้าสินค้า","ร้านออกค่าจัดส่งทั่วประเทศ")}${lines.length?`<div class="split-layout"><section class="panel"><h2>เสื้อที่เลือก</h2><ul class="order-lines">${lines.map(l=>orderLine(l,`<div class="line-actions"><span class="quantity-controls"><button type="button" data-action="quantity" data-variant="${l.variantId}" data-delta="-1" data-focus="minus-${l.variantId}" aria-label="ลดจำนวน ${l.name}">−</button><span>${l.quantity}</span><button type="button" data-action="quantity" data-variant="${l.variantId}" data-delta="1" data-focus="plus-${l.variantId}" aria-label="เพิ่มจำนวน ${l.name}">+</button></span><button class="text-button" type="button" data-action="remove-purchase" data-variant="${l.variantId}">นำออก</button></div>`)).join("")}</ul></section>
+      <aside class="panel totals-panel"><h2>สรุปตะกร้า</h2>${purchaseBalance(quote)}<p class="form-note">มีโค้ดจากใบแนบ Kit? กรอกในหน้าถัดไปเพื่อลดค่าเสื้อ ฿99 ไม่มีขั้นต่ำ</p><a class="button full" href="#/checkout/purchase">ตรวจสอบคำสั่งซื้อ</a><a class="text-link" href="#/shop">เลือกเสื้อต่อ</a></aside></div>`:emptyState("ตะกร้ายังว่าง","เลือกเสื้อยืดหรือโปโลตัวที่ชอบ")}</div>`;
   }
-
-  function trialBox(state) {
-    const lines = snapshotLines(state.trialCart);
-    const active = Mono.activeTrial(state);
-    if (active) {
-      return `<div class="wrap page">
-        ${pageTitle("กล่องลองที่บ้าน", "เปิดกล่องใหม่ได้เมื่อปิดกล่องปัจจุบัน", "Micro-Closet")}
-        ${emptyState("กล่อง " + escape(active.id) + " · " + trialLabel(active),
-          "ดูเวลาลอง เลือกเก็บหรือคืน และตรวจยอดของกล่องที่เปิดไว้",
-          "#/trials/" + escape(active.id), "เปิดกล่องปัจจุบัน")}
-      </div>`;
-    }
-
-    const slots = Array.from({ length: rules.TRIAL_LIMIT - lines.length }, () =>
-      '<li class="empty-slot">ยังมีที่สำหรับเสื้อผ้าอีกหนึ่งชิ้น</li>'
-    );
-    const quote = rules.quoteTrial(lines);
-    return `<div class="wrap page">
-      ${pageTitle("กล่องลองที่บ้าน", "เลือกได้สูงสุด 3 ชิ้น ลอง 72 ชั่วโมงหลังรับกล่อง คืนส่วนที่ไม่เก็บที่คาเฟ่ตัวอย่าง", "Micro-Closet")}
-      <div class="split-layout">
-        <section class="panel">
-          <h2>กล่องของคุณ <span class="muted">${lines.length}/3</span></h2>
-          <ul class="order-lines">${lines.map(line => orderLine(line,
-            `<button class="text-button" type="button" data-action="remove-trial" data-line="${escape(line.lineId)}" aria-label="นำ ${line.name} ออกจากกล่อง">นำออก</button>`
-          )).join("")}${slots.join("")}</ul>
-          <a class="button secondary" href="#/shop">เลือกเสื้อผ้าลงกล่อง</a>
-        </section>
-        <aside class="panel totals-panel">
-          <h2>ยอดก่อนยืนยัน</h2>
-          ${trialBalance(quote)}
-          <p class="form-note">มัดจำเท่ากับราคาชิ้นที่แพงที่สุด ยอดส่วนที่ไม่มีหลักประกันแสดงไว้ให้ตรวจสอบก่อนรับกล่อง</p>
-          ${lines.length ? '<a class="button full" href="#/checkout/trial">เลือกจุดคืนและยืนยัน</a>' : ""}
-          <a class="text-link" href="#/trials">ประวัติกล่องลอง</a>
-        </aside>
-      </div>
-    </div>`;
+  function checkout(mode,state,requestId) {
+    const kit=mode==="kit",lines=kit?[]:snapshotLines(state.cart);
+    if(!kit&&!lines.length)return `<div class="wrap page">${pageTitle("ยืนยันการซื้อ")}${emptyState("ยังไม่มีรายการให้ยืนยัน","เพิ่มเสื้อก่อนกลับมาทำรายการ")}</div>`;
+    const quote=kit?{subtotalSatang:rules.KIT_PRICE,creditSatang:0,dueSatang:rules.KIT_PRICE}:rules.quotePurchase(lines,state.credits,null);
+    return `<div class="wrap page">${breadcrumb(kit?"#/kit":"#/cart",kit?"กลับ Fabric Kit":"กลับตะกร้า")}${pageTitle(kit?"ยืนยัน Fabric Kit":"ยืนยันการซื้อ")}${paymentNotice()}
+      <form class="split-layout" data-form="checkout" data-mode="${mode}" data-request="${escape(requestId)}" data-signature="${escape(rules.checkoutSignature(state,mode))}">
+        <div class="stack"><section class="panel"><h2>ผู้รับตัวอย่าง</h2><p class="address">ลูกค้าสมมติ MONO<br>อาคารตัวอย่าง อำเภอสมมติ จังหวัดสมมติ 00000</p><p class="form-note">จัดส่งทั่วประเทศ ไม่ต้องเลือกสถาบัน · ร้านออกค่าส่ง Kit และเสื้อแยกกัน</p></section>
+          <section class="panel"><h2>รายการ</h2>${kit?`<div class="inline-purchase"><span class="tile-icon">${icon("swatch")}</span><div><strong>Fabric Kit · 1 ชุด</strong><p>ผ้าขาว 6 รหัส รหัสละ 1 ชิ้น · 10 × 10 ซม.</p><p>เก็บชุดไว้ได้ พร้อมโค้ดลดค่าเสื้อ ฿99 บนใบแนบ</p></div></div>`:`<ul class="order-lines">${lines.map(l=>orderLine(l)).join("")}</ul>`}</section>
+          <section class="panel"><h2>ที่มาของลิงก์</h2><p>${views.sourceLabel(state.attribution)}</p><p class="form-note">บันทึกที่มาของลิงก์ที่เปิด แม้ได้รับลิงก์ที่แชร์ต่อ</p></section></div>
+        <aside class="panel totals-panel"><h2>สรุปยอดชำระ</h2>${kit?"":`<label class="code-label" for="credit-code">โค้ดบนใบแนบ Fabric Kit</label><div class="code-entry"><input id="credit-code" name="credit" type="text" autocomplete="off" placeholder="เช่น KIT-001" aria-describedby="code-feedback"><button class="button secondary" type="button" data-action="apply-code">ตรวจโค้ด</button></div><p id="code-feedback" class="form-note" role="status">ลดค่าเสื้อ ฿99 ไม่มีขั้นต่ำ · ใช้ครั้งเดียว</p><a class="text-link" href="#/orders">ดูโค้ดที่ได้รับในประวัติ</a>`}
+          <div id="checkout-balance">${purchaseBalance(quote)}</div><button class="button full" type="submit">${kit?"ยืนยันสั่ง Fabric Kit":"ยืนยันคำสั่งซื้อ"}</button></aside></form></div>`;
   }
-
-  const checkoutLabels = {
-    purchase: { title: "ยืนยันการซื้อ", href: "#/cart", back: "กลับตะกร้า", submit: "ยืนยันคำสั่งซื้อ" },
-    passport: { title: "ยืนยันสมุดผ้า", href: "#/passport", back: "กลับ Fabric Passport", submit: "ยืนยันสั่งสมุดผ้า" },
-    trial: { title: "ยืนยันกล่องลอง", href: "#/trial-box", back: "กลับกล่องลอง", submit: "ยืนยันกล่องลอง" }
-  };
-
-  function passportBalance() {
-    return priceRows([["Fabric Passport", money(rules.PASSPORT_PRICE)], ["ค่าจัดส่ง", money(0)], ["ยอดชำระ", money(rules.PASSPORT_PRICE), "total"]]);
+  function order(state,o) {
+    const kit=o.mode==="kit"||o.mode==="passport",issued=kit?state.credits.find(c=>c.issuedBy===o.id):null;
+    return `<div class="wrap page narrow">${breadcrumb("#/orders","คำสั่งซื้อของฉัน")}<section class="panel confirmation"><span class="tile-icon">${icon("check")}</span>
+      ${pageTitle(kit?(o.legacy?"รายการสมุดผ้าเดิม":"สั่ง Fabric Kit แล้ว"):"ยืนยันคำสั่งซื้อแล้ว",escape(o.id)+" · "+date(o.createdAt))}${paymentNotice()}
+      ${o.legacy?'<p class="callout">ประวัติเดิม แสดงสินค้าและยอดตามใบยืนยันที่บันทึกไว้</p>':""}
+      ${kit?`<p><strong>${escape(o.kitSnapshot?.name??"Fabric Passport (รายการเดิม)")}</strong> · 1 ชุด</p>${o.kitSnapshot?`<p>ผ้าขาว ${o.kitSnapshot.contents.length} รหัส · ${escape(o.kitSnapshot.swatchSize)}</p>`:""}`:`<ul class="order-lines">${o.lines.map(l=>orderLine(l)).join("")}</ul>`}
+      ${purchaseBalance(o)}${o.creditId?`<p class="form-note">ใช้โค้ด ${escape(o.creditId)} กับรายการนี้แล้ว</p>`:""}
+      ${issued?`<details class="kit-insert"><summary>เปิดใบแนบที่ได้รับกับพัสดุ (จำลอง)</summary><p class="eyebrow">MONO · THANK YOU</p><h2>เลือกผ้าที่ชอบ แล้วเลือกเสื้อของคุณ</h2><p>โค้ดลดค่าเสื้อ 99 บาท ไม่มีขั้นต่ำ ใช้หนึ่งครั้งต่อหนึ่งรายการซื้อเสื้อ ใช้กับ Kit ไม่ได้</p><strong class="issued-code" data-issued-code>${escape(issued.id)}</strong><p>${issued.usedBy?`ใช้แล้วกับ <a class="text-link" href="#/order/${escape(issued.usedBy)}">${escape(issued.usedBy)}</a>`:"พร้อมใช้กับเสื้อครั้งถัดไป"}</p><p class="form-note">รหัสบนชิ้นผ้า เช่น 24 ใช้ค้นรุ่นเสื้อ ส่วนโค้ดด้านบนใช้ลดราคา</p><a class="button" href="#/kit">เปิดคู่มือผ้า</a></details>`:""}
+      ${!kit&&!o.legacy?views.receivedPanel(state,o):""}<p class="form-note">ที่มาลิงก์: ${views.sourceLabel(o.attribution)}</p>
+      <div class="button-row"><a class="button" href="#/shop">เลือกเสื้อต่อ</a><a class="button secondary" href="#/orders">ดูคำสั่งซื้อทั้งหมด</a></div></section></div>`;
   }
-
-  function checkout(mode, state, requestId) {
-    const config = checkoutLabels[mode];
-    const trial = mode === "trial";
-    const passport = mode === "passport";
-    const lines = snapshotLines(trial ? state.trialCart : state.cart);
-    if (!passport && !lines.length) {
-      return `<div class="wrap page">${pageTitle(config.title)}
-        ${emptyState("ยังไม่มีรายการให้ยืนยัน", "เพิ่มสินค้าก่อนกลับมาทำรายการ")}</div>`;
-    }
-    if (trial && Mono.activeTrial(state)) return trialBox(state);
-
-    const subtotal = rules.totalOf(lines);
-    const credit = mode === "purchase" ? rules.eligibleCredit(subtotal, state.credits) : null;
-    const hasUnused = state.credits.some(item => item.usedBy === null);
-    const balance = trial ? trialBalance(rules.quoteTrial(lines))
-      : passport ? passportBalance()
-      : purchaseBalance(rules.quotePurchase(lines, state.credits, credit?.id));
-
-    return `<div class="wrap page">
-      ${breadcrumb(config.href, config.back)}
-      ${pageTitle(config.title)}
-      ${paymentNotice()}
-      <form class="split-layout" data-form="checkout" data-mode="${mode}" data-request="${escape(requestId)}"
-        data-signature="${escape(rules.checkoutSignature(state, mode))}">
-        <div class="stack">
-          <section class="panel">
-            <h2>ผู้รับตัวอย่าง</h2>
-            <p class="address">ลูกค้าตัวอย่าง MONO<br>อาคารตัวอย่าง เขตสมมติ กรุงเทพมหานคร</p>
-          </section>
-          <section class="panel">
-            <h2>รายการ</h2>
-            ${passport ? `<div class="inline-purchase"><span class="tile-icon">${icon("swatch")}</span>
-              <div><strong>Fabric Passport</strong><p>ตัวอย่างผ้า 6 ชนิด · รับเครดิต ฿99</p></div></div>`
-              : `<ul class="order-lines">${lines.map(line => orderLine(line)).join("")}</ul>`}
-          </section>
-          ${trial ? `<fieldset class="panel cafe-choices">
-            <legend>เลือกคาเฟ่สำหรับส่งคืน</legend>
-            <p>จุดคืนทั้งสามแห่งเป็นสถานที่สมมติ</p>
-            ${catalog.cafes.map(cafe => `<label class="choice-row">
-              <input type="radio" name="cafe" value="${cafe.id}" required>
-              <span><strong>${cafe.name}</strong><span>${cafe.area} · ${cafe.hours}</span></span>
-            </label>`).join("")}
-          </fieldset>` : ""}
-        </div>
-        <aside class="panel totals-panel">
-          <h2>${trial ? "สรุปมัดจำ" : "สรุปยอดชำระ"}</h2>
-          ${credit ? `<label class="choice-row credit-choice"><input type="checkbox" name="credit" value="${credit.id}" checked>
-            <span><strong>ใช้เครดิตสมุดผ้า ${money(rules.CREDIT_VALUE)}</strong><span>${credit.id} · ใช้ได้หนึ่งครั้ง</span></span>
-          </label>` : mode === "purchase" && hasUnused
-            ? `<p class="callout">เพิ่มอีก ${money(rules.CREDIT_MINIMUM - subtotal)} เพื่อใช้เครดิตสมุดผ้า</p>` : ""}
-          <div id="checkout-balance">${balance}</div>
-          ${trial ? '<p class="form-note">ระยะเวลาลองเริ่มเมื่อกดรับกล่อง กล่องที่มีของคืนจะปิดยอดหลังตรวจรับ</p>' : ""}
-          <button class="button full" type="submit">${config.submit}</button>
-        </aside>
-      </form>
-    </div>`;
-  }
-
-  function order(state, order) {
-    const passport = order.mode === "passport";
-    const issued = passport ? state.credits.find(credit => credit.issuedBy === order.id) : null;
-    return `<div class="wrap page narrow">
-      ${breadcrumb("#/orders", "คำสั่งซื้อของฉัน")}
-      <section class="panel confirmation">
-        <span class="tile-icon">${icon("check")}</span>
-        ${pageTitle(passport ? "สั่งสมุดผ้าแล้ว" : "ยืนยันคำสั่งซื้อแล้ว", escape(order.id) + " · " + date(order.createdAt))}
-        ${paymentNotice()}
-        ${passport ? `<p class="callout">เครดิตสมุดผ้า ${issued ? escape(issued.id) : ""} ·
-          ${issued?.usedBy ? "ใช้แล้วกับ " + escape(issued.usedBy) : "พร้อมใช้ ฿99 เมื่อยอดเสื้อผ้าครบ ฿499"}</p>` : ""}
-        ${passport ? passportBalance() : `<ul class="order-lines">${order.lines.map(line => orderLine(line)).join("")}</ul>${purchaseBalance(order)}`}
-        <div class="button-row"><a class="button" href="#/shop">${passport ? "เลือกเสื้อผ้าเพื่อใช้เครดิต" : "เลือกสินค้าต่อ"}</a>
-          <a class="button secondary" href="#/orders">ดูคำสั่งซื้อทั้งหมด</a></div>
-      </section>
-    </div>`;
-  }
-
   function orders(state) {
-    return `<div class="wrap page narrow">
-      ${pageTitle("คำสั่งซื้อของฉัน", "รายการที่ยืนยันในเบราว์เซอร์นี้")}
-      ${state.orders.length ? `<ul class="record-list">${state.orders.slice().reverse().map(order => `<li>
-        <a class="record" href="#/order/${escape(order.id)}">
-          <span><strong>${order.mode === "passport" ? "Fabric Passport" : "ซื้อเสื้อผ้าปกติ"}</strong>
-          <span>${escape(order.id)} · ${date(order.createdAt)}</span></span>
-          <strong>${money(order.dueSatang)}</strong>
-        </a></li>`).join("")}</ul>` : emptyState("ยังไม่มีคำสั่งซื้อ", "เมื่อยืนยันแล้ว ใบคำสั่งซื้อจะอยู่ที่นี่")}
-    </div>`;
+    return `<div class="wrap page narrow">${pageTitle("คำสั่งซื้อของฉัน","รายการสาธิตในเบราว์เซอร์นี้")}${state.orders.length?`<ul class="record-list">${state.orders.slice().reverse().map(o=>`<li><a class="record" href="#/order/${escape(o.id)}"><span><strong>${o.mode==="kit"?"Fabric Kit":o.mode==="passport"?"Fabric Passport (รายการเดิม)":"ซื้อเสื้อ"}</strong><span>${escape(o.id)} · ${date(o.createdAt)}</span><span>${o.deliveredAt?"ได้รับเสื้อแล้ว · "+date(o.deliveredAt):o.legacy?"ประวัติเดิม":"ยืนยันรายการแล้ว"}</span></span><strong>${money(o.dueSatang)}</strong></a></li>`).join("")}</ul>`:emptyState("ยังไม่มีคำสั่งซื้อ","ใบยืนยันและโค้ดจาก Kit จะอยู่ที่นี่")}
+      ${views.followUpPanel(state)}${state.legacyTrials.length?`<details class="panel"><summary>รายการบริการเดิมที่บันทึกไว้</summary><p class="form-note">ประวัติเพื่ออ้างอิง ไม่เปิดบริการนี้ใน V6</p>${state.legacyTrials.map(t=>`<p>${escape(t.id)} · ${date(t.createdAt)} · ยอดที่บันทึก ${money(t.totalSatang)}${t.settlement?` · จ่ายเพิ่ม ${money(t.settlement.paySatang)} / คืน ${money(t.settlement.refundSatang)}`:""}</p>`).join("")}</details>`:""}
+      <p><a class="text-link" href="#/insights">ดูตัวชี้วัดจากรายการสาธิต</a></p></div>`;
   }
-
-  Object.assign(views, { cart, trialBox, checkout, order, orders });
+  Object.assign(views,{cart,checkout,order,orders});
 })();

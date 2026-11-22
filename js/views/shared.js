@@ -75,30 +75,10 @@
     </li>`;
   }
 
-  function settlementRows(quote) {
-    const final = quote.paySatang > 0
-      ? ["จ่ายเพิ่ม", money(quote.paySatang)]
-      : quote.refundSatang > 0
-        ? ["คืนมัดจำ", money(quote.refundSatang)]
-        : ["ยอดคงเหลือ", money(0)];
-    return priceRows([
-      ["มูลค่าสินค้าที่เก็บ", money(quote.keptSatang)], ["มัดจำที่จ่ายแล้ว", money(quote.depositSatang)],
-      [...final, "total"]
-    ]);
-  }
-
-  function trialBalance(quote) {
-    return priceRows([
-      ["มูลค่ากล่องทั้งหมด", money(quote.totalSatang)],
-      ["ยอดส่วนที่ไม่มีหลักประกัน", money(quote.exposureSatang)],
-      ["ยอดมัดจำวันนี้", money(quote.depositSatang), "total"]
-    ]);
-  }
-
   function purchaseBalance(quote) {
     return priceRows([
       ["ยอดสินค้า", money(quote.subtotalSatang)], ["ค่าจัดส่ง", money(0)],
-      ["เครดิตสมุดผ้า", quote.creditSatang ? "−" + money(quote.creditSatang) : money(0)],
+      ["ส่วนลดจากโค้ด", quote.creditSatang ? "−" + money(quote.creditSatang) : money(0)],
       ["ยอดชำระ", money(quote.dueSatang), "total"]
     ]);
   }
@@ -107,16 +87,8 @@
     return '<p class="mini-notice">รายการนี้ใช้ข้อมูลตัวอย่างและไม่มีการเรียกเก็บเงินจริง</p>';
   }
 
-  function trialLabel(trial, now = Date.now()) {
-    if (rules.isExpired(trial, now)) return "เลยกำหนด";
-    return {
-      awaiting_delivery: "รอรับกล่อง", trying: "กำลังลอง", awaiting_return: "รอตรวจรับคืน",
-      review: "กำลังตรวจสอบ", settled: "ปิดรายการแล้ว"
-    }[trial.status];
-  }
-
   Mono.views = {
     money, date, escape, icon, breadcrumb, pageTitle, emptyState, priceRows,
-    orderLine, settlementRows, trialBalance, purchaseBalance, paymentNotice, trialLabel
+    orderLine, purchaseBalance, paymentNotice
   };
 })();

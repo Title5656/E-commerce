@@ -13,7 +13,7 @@
 }
 .fitting-stage {
   position: sticky;
-  top: 1rem;
+  top: calc(var(--header-height) + 1rem);
   isolation: isolate;
   margin: 0;
   min-width: 0;
@@ -120,7 +120,7 @@
 @media (max-width: 640px) {
   .fitting-page .page-title { margin-bottom: 1.2rem; }
   .fitting-layout { display: block; }
-  .fitting-stage { z-index: 2; top: 0; }
+  .fitting-stage { z-index: 2; top: calc(var(--header-height) + 1px); }
   .fitting-stage-label { padding: .43rem .7rem .05rem; align-items: center; }
   .fitting-stage-label > div { display: flex; align-items: baseline; gap: .5rem; }
   #studio-garment { font-size: .8rem; }

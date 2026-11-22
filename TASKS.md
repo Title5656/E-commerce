@@ -9,6 +9,7 @@
 | V6-03 Fit-Twin หกรุ่น | DONE | `js/fit-model.js`, `js/views/studio.js` คอกลม/คอปก วิธีวัด ตารางตัวอย่างและกลับไซซ์เดิม |
 | V6-04 ที่มาลิงก์และซื้อซ้ำ | DONE | `js/views/retention.js`, `js/app.js`, `js/rules.js` สมัครใจติดตาม รับเสื้อพร้อมวัน และนับต่อคนครบ 60 วัน |
 | V6-05 ตรวจรับรุ่นบนเครื่อง | DONE | `docs/plan/V6_IMPLEMENTATION.md`, `docs/plan/TEST_AND_DEPLOYMENT.md`, `js/tests.js`, `tests.html`, `README.md` ทดสอบ 390/1440 พิกเซลและตรวจโค้ดก่อนพร้อมเผยแพร่ |
+| V6-06 เมนูติดจอและการ์ด Fabric Kit | DONE | `styles.css`, `studio.css`, `js/views/shop.js`, `js/views/checkout.js`, `assets/fabrics/IMAGE_SOURCES.md`, `docs/plan/PRODUCT_SPEC.md`, `docs/plan/TEST_AND_DEPLOYMENT.md` ตรวจ 390/1440 พิกเซล เมนูติดขอบบนไม่บังหุ่น ภาพ Kit การ์ดผ้าคล้องห่วงปกคราฟต์และ checkout ผ่าน ชุดทดสอบ 47/47 |
 
 ## ประวัติงานก่อน V6
 

@@ -37,6 +37,12 @@ node -e "require('./js/catalog.js');require('./js/rules.js');require('./js/store
 
 ## เผยแพร่
 
+### ตรวจเมนูติดจอและ Kit การ์ดคล้องห่วง · 22 พฤศจิกายน 2569
+
+- ที่ 390/1440 พิกเซล เลื่อนหน้า Kit หลายตำแหน่งแล้ว header ยังคง y=0 เปิดเมนูมือถือและเข้าห้องลองได้ หุ่น sticky อยู่ใต้ header และหน้าไม่ล้นแนวนอน
+- ภาพ Kit แนวคิด AI เป็นผ้าคั่นกลางปกคราฟต์หน้า–หลังคล้องห่วงโซ่ ใช้ responsive WebP 640/960 พิกเซล ประมาณ 43/86 KB ไม่มีสคริปต์ 3D หรือ scroll handler เพิ่มในหน้า Kit
+- ตรวจภาพหลักและภาพใน checkout ซื้อ Kit สำเร็จ พร้อม tests.html 47/47 หลังปรับ UI
+
 GitHub Pages ใช้ `main` / `/(root)` และ `.nojekyll` หลัง push ต้องรอ deployment สำเร็จ แล้วเปิด URL สาธารณะทดสอบสี่เส้นทางและ tests.html ใหม่ ทรัพยากรเว็บต้องอยู่ใต้ origin/path ของโครงการ ไม่มี CDN/API จากหน้าเว็บ การตรวจบนเครื่องไม่ได้ยืนยันว่ารุ่น V6 เผยแพร่แล้ว
 
 [repository](https://github.com/Title5656/E-commerce) · [หน้าร้าน](https://title5656.github.io/E-commerce/) · [ชุดทดสอบ](https://title5656.github.io/E-commerce/tests.html)
